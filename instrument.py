@@ -102,7 +102,7 @@ class yokogawa(object):
             return rc 
         #_____________________________________________________________________________
         def set_range(self,value): 
-            cmd = ":SOUR:RANG {0:.0E}".format(value) 
+            cmd = ":SOUR:RANG {0:.0E}".format( float(value) ) 
             rc  = self.write(cmd)
             return rc 
         #_____________________________________________________________________________
@@ -117,23 +117,29 @@ class yokogawa(object):
             return rc 
         #_____________________________________________________________________________
         def set_level(self,value): 
-            cmd = ":SOUR:LEV {0:.5f}".format(value) 
+            cmd = ":SOUR:LEV {0:.5f}".format( float(value) ) 
             rc  = self.write(cmd)
             return rc
         #_____________________________________________________________________________
         def set_output_state(self,value): 
-            cmd = "OUTP:STAT {0:d}".format(value) 
+            cmd = "OUTP:STAT {0:d}".format( float(value) ) 
             rc  = self.write(cmd) 
             return rc 
         #_____________________________________________________________________________
         def set_clock_time(self,hour,minute,second): 
-            cmd = ':SYST:CLOC:TIME "{0:02d}:{1:02d}:{2:02d}"'.format(hour,minute,second)
-            rc  = self.write(cmd) 
+            fhr  = float(hour) 
+            fmin = float(minute) 
+            fsec = float(second)  
+            cmd  = ':SYST:CLOC:TIME "{0:02d}:{1:02d}:{2:02d}"'.format(fhr,fmin,fsec)
+            rc   = self.write(cmd) 
             return rc 
         #_____________________________________________________________________________
-        def set_clock_date(self,month,day,year): 
-            cmd = ':SYST:CLOC:DATE "{0:04d}/{1:02d}/{2:02d}"'.format(year,month,day)
-            rc  = self.write(cmd) 
+        def set_clock_date(self,month,day,year):
+            fmon = float(month) 
+            fday = float(day) 
+            fyr  = float(year)  
+            cmd  = ':SYST:CLOC:DATE "{0:04d}/{1:02d}/{2:02d}"'.format(fyr,fmon,fday)
+            rc   = self.write(cmd) 
             return rc 
         #_____________________________________________________________________________
         def write(self,cmd):
