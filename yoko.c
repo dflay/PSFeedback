@@ -1,5 +1,4 @@
 // Embedding python: call python functions from C 
-// TODO: Need to keep track of how many pointers we are creating (CallMethod function) 
 
 #include <Python.h> 
 #include <stdlib.h> 
@@ -41,24 +40,39 @@ int main(int argc,char *argv[]){
       return 1;  
    } 
 
-   PyObject *pValue = CallMethod(pInstance,YOKOGAWA_OPEN_VXI_CONNECTION ,NULL);  
+   char *level = "2E-3"; 
+
+   // Call some functions 
+   // Note: 
+   //  - getter methods return values (strings) 
+   //  - setter methods do not return values 
+
+   PyObject *pValue = CallMethod(pInstance,YOKOGAWA_OPEN_VXI_CONNECTION ,NULL); // the CallMethod function calls Py_INCREF()
+   Py_DECREF(pValue);   // Need to call DECREF to decrease the reference count since we're done with it 
    pValue           = CallMethod(pInstance,YOKOGAWA_GET_DEVICE_ID       ,NULL);  
+   Py_DECREF(pValue);
    pValue           = CallMethod(pInstance,YOKOGAWA_PRINT               ,NULL);  
+   Py_DECREF(pValue);
    pValue           = CallMethod(pInstance,YOKOGAWA_GET_MODE            ,NULL); 
+   Py_DECREF(pValue);
    printf("Mode = %s \n", GetString(pValue) );  
    pValue           = CallMethod(pInstance,YOKOGAWA_GET_OUTPUT_STATE    ,NULL); 
+   Py_DECREF(pValue);
    printf("Output state = %s \n", GetString(pValue) );  
-   pValue           = CallMethod(pInstance,YOKOGAWA_SET_LEVEL           ,"2.0E-3");  
+   printf("Setting the level to %s A \n",level); 
+   pValue           = CallMethod(pInstance,YOKOGAWA_SET_LEVEL           ,level);  
+   Py_DECREF(pValue);
    pValue           = CallMethod(pInstance,YOKOGAWA_GET_LEVEL           ,NULL);  
+   Py_DECREF(pValue);
    printf("Level = %s \n", GetString(pValue) );  
    pValue           = CallMethod(pInstance,YOKOGAWA_CLOSE_VXI_CONNECTION,NULL);  
+   Py_DECREF(pValue);
  
    // clean up memory 
    Py_DECREF(pModule); 
    Py_DECREF(pName); 
    Py_DECREF(pInstance); 
    Py_DECREF(pClass); 
-   Py_DECREF(pValue); 
 
    // close down python interpreter 
    Py_Finalize(); 
