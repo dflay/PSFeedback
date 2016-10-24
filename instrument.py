@@ -15,15 +15,18 @@ class yokogawa(object):
         #_____________________________________________________________________________
         def open_vxi_connection(self): 
             VISA_str = self.get_VISA_string("TCPIP",self.ip_addr)
-            print "[{0}]: Opening VXI-11 connection...".format(self.mfg)
+            print "Opening VXI-11 connection...".format(self.mfg)
             response = "UNKNOWN"
             rc = 0 
             try:
                 self.dev = vxi11.Instrument(VISA_str)
+                self.dev.open() 
                 response = "open"
             except: 
                 response = "FAILED"
                 rc = 1 
+            else: 
+                id_data = self.get_device_id() 
             print "[{0}]: VXI-11 connection {1}.".format(self.mfg,response)
             return rc
         #_____________________________________________________________________________
