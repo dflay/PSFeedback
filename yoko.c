@@ -11,19 +11,19 @@ PyObject *CallMethod(PyObject *pInstance,char *method_name,char *arg);
 
 int main(int argc,char *argv[]){
 
-   Py_SetProgramName(argv[0]);                                          // optional but recommended  
-   Py_Initialize();                                                     // initialize python interpreter 
-   PySys_SetArgv(argc, argv);                                           // must call this to get sys.argv and relative imports
+   Py_SetProgramName(argv[0]);                                            // optional but recommended  
+   Py_Initialize();                                                       // initialize python interpreter 
+   PySys_SetArgv(argc, argv);                                             // must call this to get sys.argv and relative imports
 
    PyObject *pName     = PyString_FromString(YOKOGAWA_SOURCE_NAME);       // build the name object 
    if ( CheckPtr("pName",pName)==1 )     return 1; 
-   PyObject *pModule   = PyImport_Import(pName);                        // load the module 
+   PyObject *pModule   = PyImport_Import(pName);                          // load the module 
    if ( CheckPtr("pModule",pModule)==1 ) return 1; 
-   PyObject *pDict     = PyModule_GetDict(pModule);                     // get the dictionary 
+   PyObject *pDict     = PyModule_GetDict(pModule);                       // get the dictionary 
    if ( CheckPtr("pDict",pDict)==1 )     return 1; 
    PyObject *pClass    = PyDict_GetItemString(pDict,YOKOGAWA_CLASS_NAME); // find the class in the dictionary 
    if ( CheckPtr("pClass",pClass)==1 )   return 1; 
-   PyObject *pInstance = NULL;                                          // instance of the class  
+   PyObject *pInstance = NULL;                                            // instance of the class  
 
    // yokogawa info 
    // build a python tuple to pass to the function 
