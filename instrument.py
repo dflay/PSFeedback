@@ -16,18 +16,17 @@ class yokogawa(object):
         def open_vxi_connection(self): 
             VISA_str = self.get_VISA_string("TCPIP",self.ip_addr)
             print "Opening VXI-11 connection...".format(self.mfg)
-            response = "UNKNOWN"
             rc = 0 
             try:
                 self.dev = vxi11.Instrument(VISA_str)
+                self.dev.settimeout(20)  # set timeout to 20 seconds  
                 self.dev.open() 
-                response = "open"
             except: 
-                response = "FAILED"
+                print "Connection to VXI-11 device FAILED."
                 rc = 1 
             else: 
                 id_data = self.get_device_id() 
-            print "[{0}]: VXI-11 connection {1}.".format(self.mfg,response)
+                print "[{0}]: VXI-11 connection opened.".format(self.mfg)
             return rc
         #_____________________________________________________________________________
         def close_vxi_connection(self): 
