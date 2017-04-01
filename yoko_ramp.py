@@ -1,6 +1,6 @@
 #! /usr/bin/python 
 # test out talking to yokogawa using the yokogawa class  
-# ramp from -5 mA to + 5 mA 
+# ramp over arbitrary range defined in ./input/current-list.txt  
 
 import sys 
 import time 
@@ -28,11 +28,12 @@ yoko    = yokogawa(ip_addr)
 rc      = yoko.open_vxi_connection()
 
 if(rc==1 and IsTestMode!=2): 
-   print "Exiting..."
-   sys.exit(0) 
+    print "Exiting..."
+    sys.exit(0) 
 
-# show device info  
-yoko.Print()  
+if(rc==0):  
+    # show device info  
+    yoko.Print()  
 
 if(IsTestMode==1):  
     response = yoko.run_self_test() 
@@ -78,10 +79,31 @@ for line in infile:
     line.strip('\n')
     setPt.append( float(line) ) 
 
-print "Currents to scan: "
-print setPt 
+# check inputs 
+MAX   = 200.00  
+arg   = 0  
+value = []
+sign  = 1.
+for entry in setPt: 
+    if( abs(entry)>MAX ):
+        print "Entry invalid (I = {0:.3f} mA)!  Setting to 20% less than the maximum".format(entry)
+        if(entry>=0): 
+            sign = 1.0
+        else:  
+            sign = -1.0
+        arg = sign*MAX*(0.80) 
+        value.append(arg)
+    else:  
+        value.append(entry)  
 
-NPTS = 300 # len(setPt)  
+print "Currents to scan: "
+print value 
+
+NPTS = len(setPt) 
+
+if(IsTestMode==2): 
+    NPTS = 30 
+ 
 for i in range(0,NPTS): 
     t_start = timer() 
     if(IsTestMode==0): 
@@ -89,9 +111,11 @@ for i in range(0,NPTS):
          if(rc==0): 
              mode = yoko.get_mode() 
              print "mode = {0}".format(mode)  
-             yoko.set_level(setPt[i]) 
+             yoko.set_level(value[i]) 
              current = yoko.get_level() 
              print "level = {0:.4f} mA".format( float(current)/1E-3 ) 
+             x_val   = float(i)
+             y_val   = current  
              yoko.close_vxi_connection()  
              t_stop = timer() 
              dt     = t_stop - t_start
@@ -100,17 +124,16 @@ for i in range(0,NPTS):
     elif(IsTestMode==2):
          x_val = float(i)
          y_val = np.random.random()  
-         # print "event {0}: \t {1} " .format(x_val,y_val)
-         # plt.scatter(x_val,y_val)
-         plt.plot(x_val,y_val,marker='o',color='b',linestyle='-') 
-         plt.pause(0.100) #Note this correction 
-         time.sleep(1)  # 1-second delay 
+    # print "event {0}: \t {1} " .format(x_val,y_val)
+    # plt.scatter(x_val,y_val)
+    plt.plot(x_val,y_val,marker='o',color='b',linestyle='-') 
+    plt.pause(0.100) # Note this correction 
+    time.sleep(1)    # 1-second delay 
          
-
 # disable and reset to zero  
 rc = yoko.open_vxi_connection()
 if(rc==0): 
-    yoko.set_output_state(0)
     yoko.set_level(0)  
+    yoko.set_output_state(0)
     yoko.close_vxi_connection()
  
