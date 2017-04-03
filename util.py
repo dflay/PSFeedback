@@ -8,11 +8,10 @@ import random
 import pytz
 import pyqtgraph as pg 
 
-UNIX_EPOCH_naive = datetime.datetime(1970, 1, 1, 0, 0) #offset-naive datetime
-UNIX_EPOCH_offset_aware = datetime.datetime(1970, 1, 1, 0, 0, tzinfo = pytz.utc) #offset-aware datetime
-UNIX_EPOCH = UNIX_EPOCH_naive
-
-TS_MULT_us = 1e6
+UNIX_EPOCH_naive        = datetime.datetime(1970, 1, 1, 0, 0) # offset-naive datetime
+UNIX_EPOCH_offset_aware = datetime.datetime(1970, 1, 1, 0, 0, tzinfo = pytz.utc) # offset-aware datetime
+UNIX_EPOCH              = UNIX_EPOCH_naive
+TS_MULT_us              = 1e6
 
 #_______________________________________________________________________________
 # Miscellaneous functions and classes 
@@ -75,7 +74,8 @@ class RunManager:
         if self.isDebug==True: print("Number of runs: %d, next run: %d" %(N,nextRun) )  
         return nextRun
 #_______________________________________________________________________________
-# 
+# a class that keeps track of miscellaneous important quantities 
+# that are not necessarily related to a run  
 class StatusManager: 
     def __init__(self): 
         self.isConnected      = False 
@@ -97,7 +97,6 @@ class StatusManager:
          # clear the array 
          del self.tsList[:] 
          del self.spList[:]
- 
 #_______________________________________________________________________________
 # a class that handles all file I/O 
 class FileManager: 
