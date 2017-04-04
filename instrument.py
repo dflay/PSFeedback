@@ -6,32 +6,47 @@ import vxi11
 
 class yokogawa(object): 
     #_____________________________________________________________________________
-    def __init__(self,ip_addr): 
-        self.ip_addr   = ip_addr 
-        self.mfg       = "NONE"
-        self.model_no  = "NONE"
-        self.serial_no = "NONE"
-        self.fw_ver    = "NONE"   # firmware version 
+    def __init__(self): 
+        self.isDebug    = False 
+        self.ip_addr    = "XXX.XXX.XXX.XXX" 
+        self.mfg        = "NONE"
+        self.model_no   = "NONE"
+        self.serial_no  = "NONE"
+        self.fw_ver     = "NONE"   # firmware version 
+        self.status_msg = "NONE"   # a status message
     #_____________________________________________________________________________
-    def open_vxi_connection(self): 
+    def open_vxi_connection(self,ip_addr): 
+        self.ip_addr = ip_addr 
         VISA_str = self.get_VISA_string("TCPIP",self.ip_addr)
-        print "Opening VXI-11 connection...".format(self.mfg)
+        if(self.isDebug==True):
+            print( "Opening VXI-11 connection...".format(self.mfg) )
+        else: 
+            self.status_msg = "Opening VXI-11 connection...".format(self.mfg) 
         rc = 0 
         try:
             self.dev = vxi11.Instrument(VISA_str)
             self.dev.settimeout(20)  # set timeout to 20 seconds  
             self.dev.open() 
         except: 
-            print "Connection to VXI-11 device FAILED."
+            if(self.isDebug==True): 
+                print("Connection to Yokogawa device at IP address {0} FAILED.".format(self.ip_addr) )
+            else: 
+                self.status_msg = "Connection to Yokogawa device at IP address {0} FAILED.".format(self.ip_addr)
             rc = 1 
         else: 
             id_data = self.get_device_id() 
-            print "[{0}]: VXI-11 connection opened.".format(self.mfg)
+            if(self.isDebug==True): 
+                print( "[{0}]: VXI-11 connection opened.".format(self.mfg) ) 
+            else: 
+                self.status_msg = "[{0}]: VXI-11 connection opened.".format(self.mfg)  
         return rc
     #_____________________________________________________________________________
     def close_vxi_connection(self): 
         self.dev.close()
-        print "[{0}]: VXI-11 connection closed.".format(self.mfg)
+        if(self.isDebug==True): 
+            print("[{0}]: VXI-11 connection closed.".format(self.mfg))
+        else: 
+            self.status_msg = "[{0}]: VXI-11 connection closed.".format(self.mfg)
     #_____________________________________________________________________________
     def get_VISA_string(self,aType,id_tag):
         a_str = "UNKNOWN"
@@ -123,6 +138,16 @@ class yokogawa(object):
         rc  = self.write(cmd)
         return rc
     #_____________________________________________________________________________
+    def enable_output(self): 
+        cmd = "OUTP:STAT 1" 
+        rc  = self.write(cmd) 
+        return rc 
+    #_____________________________________________________________________________
+    def disable_output(self): 
+        cmd = "OUTP:STAT 0" 
+        rc  = self.write(cmd) 
+        return rc 
+    #_____________________________________________________________________________
     def set_output_state(self,value): 
         cmd = "OUTP:STAT {0:d}".format( int(value) ) 
         rc  = self.write(cmd) 
@@ -149,7 +174,10 @@ class yokogawa(object):
         try: 
             self.dev.write(cmd)
         except: 
-            print "[{0}]: write {1} FAILED.".format(self.mfg,cmd) 
+            if(self.isDebug==True): 
+                print( "[{0}]: write {1} FAILED.".format(self.mfg,cmd) ) 
+            else: 
+                self.status_msg = "[{0}]: write {1} FAILED.".format(self.mfg,cmd) 
             rc = 1 
         return rc  
     #_____________________________________________________________________________
@@ -158,17 +186,20 @@ class yokogawa(object):
         try:  
             response = self.dev.ask(cmd)
         except: 
-            print "[{0}]: ask {1} FAILED.".format(self.mfg,cmd) 
+            if(self.isDebug==True): 
+                print( "[{0}]: ask {1} FAILED.".format(self.mfg,cmd) )
+            else:  
+                self.status_msg = "[{0}]: ask {1} FAILED.".format(self.mfg,cmd)
         return response 
     #_____________________________________________________________________________
     def Print(self):
-        print "--------------------------------------------"
-        print "MFG:           {0}".format(self.mfg      )
-        print "Model No.:     {0}".format(self.model_no ) 
-        print "Serial No.:    {0}".format(self.serial_no)
-        print "Firmware Ver.: {0}".format(self.fw_ver   ) 
-        print "IP Address:    {0}".format(self.ip_addr  )
-        print "--------------------------------------------"
+        print("--------------------------------------------")
+        print("MFG:           {0}".format(self.mfg      )   )
+        print("Model No.:     {0}".format(self.model_no )   ) 
+        print("Serial No.:    {0}".format(self.serial_no)   )
+        print("Firmware Ver.: {0}".format(self.fw_ver   )   ) 
+        print("IP Address:    {0}".format(self.ip_addr  )   )
+        print("--------------------------------------------")
         # print "subnet:      %s" %(self.subnet)
         # print "gateway:     %s" %(self.gateway)
         # print "MAC address: %s" %(self.mac_addr)

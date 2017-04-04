@@ -7,36 +7,48 @@ from pyqtgraph.dockarea import *
 
 from collections import deque
 
+import time 
+
 from util import *
+# import vxi11
+from instrument import yokogawa 
 
 class YokoGUI(QtGui.QApplication):
     def __init__(self, *args, **kwargs):
         super(YokoGUI, self).__init__(*args, **kwargs)
+ 
+        # not sure what these are for... 
         self.t = QTime()
         self.t.start()
 
         # ----------------------------------------------------------------------        
         # some parameters that we can set 
-        self.time_delay   =  250  # in milliseconds  
-        self.iMin         = -260  # in milliamps  
-        self.iMax         =  260  # in milliamps 
+        # plot variables 
+        self.time_delay   =  250                # in milliseconds  
+        self.iMin         = -260                # in milliamps  
+        self.iMax         =  260                # in milliamps 
+        # vectors for plotting data  
+        self.max_len         = 200
+        self.data_x          = deque(maxlen=self.max_len)
+        self.data_y          = deque(maxlen=self.max_len) 
+
+        # directories and filenames 
         self.dataDIR      = "./data" 
         self.dataFN       = "yokogawa"
         self.setpointFN   = "setpoint_history"
         self.fileEXT      = "csv"
+        # yokogawa stuff 
+        self.yoko_readout_delay = 0.50          # time in seconds 
+        self.yoko_status        = "NONE"
 
         # my variables 
+        self.yoko            = yokogawa()       # yokogawa object  
         self.runMgr          = RunManager()
         self.fileMgr         = FileManager()
         self.statusMgr       = StatusManager()  
         self.runMgr.dataDir  = self.dataDIR 
         self.fileMgr.dataDir = self.dataDIR 
         self.fileMgr.fileEXT = self.fileEXT 
-
-        # vectors for plotting data  
-        self.max_len         = 200
-        self.data_x          = deque(maxlen=self.max_len)
-        self.data_y          = deque(maxlen=self.max_len) 
 
         # Enable antialiasing for prettier plots
         pg.setConfigOptions(antialias=True)
@@ -137,11 +149,19 @@ class YokoGUI(QtGui.QApplication):
         self.win.show() 
 
     def connectToDevice(self):
+        rc = 1 
         self.statusMgr.ipAddr = self.ip_entryField.text() 
         if self.statusMgr.isConnected==False: 
-            self.statusBar.showMessage("System: Connecting to device with IP addresss %s" %(self.statusMgr.ipAddr) ) 
-            self.statusMgr.isConnected = True 
-            # FIXME: program the Yokogawa 
+            self.statusBar.showMessage("System: Connecting to device with IP address %s" %(self.statusMgr.ipAddr) ) 
+            rc = self.yoko.open_vxi_connection(self.statusMgr.ipAddr)
+            self.yoko_status = self.yoko.status_msg 
+            self.statusBar.showMessage("System: %s" %(self.yoko_status) ) 
+            if(rc==0):
+                # ok, we're connected.  set to current mode, set to max range 
+                self.yoko.set_to_current_mode() 
+                self.yoko.set_range_max() 
+                self.yoko.set_level(0.0)               # set to zero mA
+                self.statusMgr.isConnected = True 
         else: 
             self.statusBar.showMessage("System: Already connected at IP address %s" %(self.statusMgr.ipAddr) ) 
 
@@ -179,11 +199,15 @@ class YokoGUI(QtGui.QApplication):
             self.statusMgr.updateSetPoint(self.statusMgr.currentSetPoint)
             # update status banner 
             self.statusBar.showMessage("System: Run %d started" %(self.runMgr.runNum) ) 
+            # enable the output on the yokogawa 
+            self.yoko.enable_output()                   
         else: 
             self.statusBar.showMessage("System: Run %d already started" %(self.runMgr.runNum) ) 
 
     def stopRun(self):
         if self.runMgr.isRunning==True: 
+           # disable the output on the yokogawa 
+           self.yoko.disable_output()                   
            # stop readout  
            self.tmr.stop()
            # run is no longer active 
@@ -192,13 +216,19 @@ class YokoGUI(QtGui.QApplication):
            self.fileMgr.writeSetPointHistoryFile(self.runMgr.runNum,self.setpointFN,self.statusMgr.tsList,self.statusMgr.spList)
            self.statusMgr.clearSetPointHistory() # clear for next run 
            # update status banner 
-           self.statusBar.showMessage("System: Run %d stopped" %(self.runMgr.runNum) ) 
+           filePath = "%s/run-%05d/%s.%s" %(self.dataDIR,self.runMgr.runNum,self.setpointFN,self.fileEXT)
+           self.statusBar.showMessage("System: Run %d stopped.  Set point history written to %s." %(self.runMgr.runNum,filePath) ) 
 
     def killDAQ(self): 
         # FIXME: set Yokogawa to zero, disable, and disconnect 
         if self.runMgr.isRunning==True:
             self.statusBar.showMessage("System: Cannot quit until run %d is stopped" %(self.runMgr.runNum) )
-        else:   
+        else:  
+            # set the yokogawa level to zero 
+            self.yoko.set_level(0.);
+            # close the connection  
+            self.yoko.close_vxi_connection() 
+            # quit the GUI 
             QtCore.QCoreApplication.instance().quit()
         
     # generate the data 
@@ -208,12 +238,17 @@ class YokoGUI(QtGui.QApplication):
         if self.statusMgr.manualMode==1: 
            y = self.statusMgr.currentSetPoint  
         else: 
-           y = get_data() 
-        rc = self.fileMgr.appendToFile(self.runMgr.runNum,self.dataFN,x,y) 
+           y = get_data()
+        # program the yokogawa 
+        self.yoko.set_level(y) 
+        # wait a bit 
+        time.sleep(self.yoko_readout_delay)
+        lvl = self.yoko.get_level() 
+        rc = self.fileMgr.appendToFile(self.runMgr.runNum,self.dataFN,x,lvl) 
         if rc==1: 
             self.statusBar.showMessage("System: Cannot write data to file for run %d" %(self.runMgr.runNum) )
         self.data_x.append(x)
-        self.data_y.append(y)
+        self.data_y.append(lvl)
         self.myPlot.setData(x=list(self.data_x), y=list(self.data_y))
 
 def main():

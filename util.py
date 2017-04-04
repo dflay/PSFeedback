@@ -69,7 +69,7 @@ class RunManager:
                 arg = int(entry.strip('run-') )
                 if arg>=lastRun: lastRun = arg
         else: 
-            lastRun = 1
+            lastRun = 0 
         nextRun = lastRun + 1
         if self.isDebug==True: print("Number of runs: %d, next run: %d" %(N,nextRun) )  
         return nextRun
@@ -137,7 +137,7 @@ class FileManager:
     def writeSetPointHistoryFile(self,runNum,fn,ts,sp):
         rc = 0 
         theDir = self.getRunPath(runNum) 
-        outpath = '%s/%s.%s' %(theDir,fn,fileEXT)
+        outpath = '%s/%s.%s' %(theDir,fn,self.fileEXT)
         # check if the directory exists before writing to file 
         if (os.path.isdir(theDir)==True ): 
            myFile = open(outpath,'w')
