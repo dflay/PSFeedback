@@ -29,9 +29,9 @@ class yokogawa(object):
             self.dev.open() 
         except: 
             if(self.isDebug==True): 
-                print("Connection to Yokogawa device at IP address {0} FAILED.".format(self.ip_addr) )
+                print("Cannot connect to Yokogawa device at IP address {0}.".format(self.ip_addr) )
             else: 
-                self.status_msg = "Connection to Yokogawa device at IP address {0} FAILED.".format(self.ip_addr)
+                self.status_msg = "Cannot connect to Yokogawa device at IP address {0}.".format(self.ip_addr)
             rc = 1 
         else: 
             id_data = self.get_device_id() 

@@ -84,6 +84,7 @@ class StatusManager:
         self.autoMode         = 0
         self.ipAddr           = "" 
         self.currentSetPoint  = 0 
+        self.isSimMode        = False 
         # for a history of setpoint changes 
         self.tsList           = [] 
         self.spList           = []
@@ -112,7 +113,7 @@ class FileManager:
         # check if the directory exists before writing to file 
         if (os.path.isdir(theDir)==True ): 
            myFile = open(outpath,'a')
-           myFile.write("%d,%.3f\n" %(utc_time,val) )
+           myFile.write("%d,%.6f\n" %(utc_time,val) )
            myFile.close()
         else:
            if self.isDebug==True: print("[FileManager]: Cannot access the directory %s. " %(theDir) ) 
@@ -144,10 +145,10 @@ class FileManager:
            N = len(ts)
            if N==0: 
                # if no setpoints, write one line of zeros 
-               myFile.write("%d,%.3lf\n" %(0,0) ) 
+               myFile.write("%d,%.6lf\n" %(0,0) ) 
            else: 
                for i in range(0,N): 
-                   myFile.write("%d,%.3lf\n" %(ts[i],sp[i]) )
+                   myFile.write("%d,%.6lf\n" %(ts[i],sp[i]) )
            myFile.close()
         else:
            if self.isDebug==True: print("[FileManager]: Cannot access the directory %s. " %(theDir) ) 

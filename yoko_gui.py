@@ -24,9 +24,12 @@ class YokoGUI(QtGui.QApplication):
         # ----------------------------------------------------------------------        
         # some parameters that we can set 
         # plot variables 
-        self.time_delay   =  250                # in milliseconds  
-        self.iMin         = -260                # in milliamps  
-        self.iMax         =  260                # in milliamps 
+        self.time_delay      =  250                # in milliseconds  
+        self.iMin            = -260                # in milliamps  
+        self.iMax            =  260                # in milliamps 
+        self.CONV_mA_TO_AMPS = 1E-3                # conversion mA -> A  
+        self.LOWER_LIMIT     = -200 
+        self.UPPER_LIMIT     =  200  
         # vectors for plotting data  
         self.max_len         = 200
         self.data_x          = deque(maxlen=self.max_len)
@@ -49,6 +52,8 @@ class YokoGUI(QtGui.QApplication):
         self.runMgr.dataDir  = self.dataDIR 
         self.fileMgr.dataDir = self.dataDIR 
         self.fileMgr.fileEXT = self.fileEXT 
+
+        self.statusMgr.isSimMode = True             # ignore yokogawa, get random data 
 
         # Enable antialiasing for prettier plots
         pg.setConfigOptions(antialias=True)
@@ -83,9 +88,11 @@ class YokoGUI(QtGui.QApplication):
         self.ip_label      = QtGui.QLabel("IP Address")
         self.ip_entryField = QtGui.QLineEdit()
         self.connBtn       = QtGui.QPushButton('Connect')
+        self.disconnBtn    = QtGui.QPushButton('Disconnect')
         self.w1.addWidget(self.ip_label     ,row=0, col=0)
         self.w1.addWidget(self.ip_entryField,row=0, col=1)
         self.w1.addWidget(self.connBtn      ,row=0, col=2)
+        self.w1.addWidget(self.disconnBtn   ,row=0, col=3)
         # manual and auto modes
         self.manual_mode = 1
         self.auto_mode   = 0
@@ -107,6 +114,7 @@ class YokoGUI(QtGui.QApplication):
         self.autoBtn.clicked.connect(self.setAutoMode) 
         self.setPtBtn.clicked.connect(self.applySetPt)
         self.connBtn.clicked.connect(self.connectToDevice)  
+        self.disconnBtn.clicked.connect(self.disconnectFromDevice)  
         # add the widget to the dock 
         self.d1.addWidget(self.w1)
 
@@ -151,63 +159,103 @@ class YokoGUI(QtGui.QApplication):
     def connectToDevice(self):
         rc = 1 
         self.statusMgr.ipAddr = self.ip_entryField.text() 
-        if self.statusMgr.isConnected==False: 
-            self.statusBar.showMessage("System: Connecting to device with IP address %s" %(self.statusMgr.ipAddr) ) 
-            rc = self.yoko.open_vxi_connection(self.statusMgr.ipAddr)
-            self.yoko_status = self.yoko.status_msg 
-            self.statusBar.showMessage("System: %s" %(self.yoko_status) ) 
-            if(rc==0):
-                # ok, we're connected.  set to current mode, set to max range 
-                self.yoko.set_to_current_mode() 
-                self.yoko.set_range_max() 
-                self.yoko.set_level(0.0)               # set to zero mA
-                self.statusMgr.isConnected = True 
+        if self.statusMgr.ipAddr=="": 
+            self.statusBar.showMessage("System: IP address string is empty!") 
+        else:  
+            if self.statusMgr.isConnected==False: 
+                self.statusBar.showMessage("System: Connecting to device with IP address %s" %(self.statusMgr.ipAddr) ) 
+                if(self.statusMgr.isSimMode==False): 
+                    rc = self.yoko.open_vxi_connection(self.statusMgr.ipAddr)
+                    self.yoko_status = self.yoko.status_msg 
+                    self.statusBar.showMessage("System: %s" %(self.yoko_status) ) 
+                    if(rc==0):
+                        # ok, we're connected.  set to current mode, set to max range 
+                        self.yoko.set_to_current_mode() 
+                        self.yoko.set_range_max() 
+                        self.yoko.set_level(0.0)               # set to zero mA
+                        self.statusMgr.isConnected = True 
+            else: 
+                self.statusBar.showMessage("System: Already connected at IP address %s" %(self.statusMgr.ipAddr) ) 
+
+    def disconnectFromDevice(self): 
+        if self.statusMgr.isSimMode==False: 
+            if self.statusMgr.isConnected==True: 
+                self.yoko.disable_output() 
+                self.yoko.close_vxi_connection() 
+                self.yoko_status = self.yoko.status_msg 
+                self.statusBar.showMessage("System: %s" %(self.yoko_status) ) 
+            else: 
+                self.statusBar.showMessage("System: Already disconnected from Yokogawa.") 
         else: 
-            self.statusBar.showMessage("System: Already connected at IP address %s" %(self.statusMgr.ipAddr) ) 
+            self.statusBar.showMessage("System: In simulation mode, nothing to disconnect from.") 
 
     def applySetPt(self):
         text     = self.setPtField.text()
         try: 
             val = float(text)
-            self.statusMgr.updateSetPoint(val)
-            self.statusBar.showMessage( "System: The setpoint is now %.3f mA" %(self.statusMgr.currentSetPoint) ) 
+            if val>self.LOWER_LIMIT and val<self.UPPER_LIMIT: 
+                self.statusMgr.updateSetPoint( val*self.CONV_mA_TO_AMPS )
+                self.statusBar.showMessage( "System: The setpoint is now %.3f mA" %(self.statusMgr.currentSetPoint/self.CONV_mA_TO_AMPS) ) 
+            else:
+                msg = "System: Setpoint out of bounds!  " \
+                      "Requested: %.3f mA;  " \
+                      "limits: low = %.3f, high = %.3f" %(val,self.LOWER_LIMIT,self.UPPER_LIMIT) 
+                self.statusBar.showMessage(msg) 
         except: 
-            self.statusBar.showMessage( "System: Invalid setpoint value!  No action taken") 
-        # FIXME: program the Yokogawa 
+            self.statusBar.showMessage( "System: Invalid setpoint value [NaN]!  No action taken") 
 
     def setManualMode(self):
         self.statusMgr.manualMode = 1
         self.statusMgr.autoMode   = 0
         self.statusBar.showMessage("System: In manual mode") 
-        # FIXME: program the Yokogawa, don't look at file  
 
     def setAutoMode(self):
         self.statusMgr.manualMode = 0
         self.statusMgr.autoMode   = 1
         self.statusBar.showMessage("System: In auto mode") 
-        # FIXME: toggle to look at a file  
 
     def startRun(self):
-        if self.runMgr.isRunning==False: 
-            # start readout of yokogawa 
-            self.tmr.start(self.time_delay)
-            # get the run number, set to active status 
-            self.runMgr.updateRunNumber() 
-            self.fileMgr.makeDirectory(self.runMgr.runNum)  
-            self.runMgr.isRunning = True
-            # update the setpoint (get a timestamp on the current setpoint, even if zero)  
-            self.statusMgr.updateSetPoint(self.statusMgr.currentSetPoint)
-            # update status banner 
-            self.statusBar.showMessage("System: Run %d started" %(self.runMgr.runNum) ) 
-            # enable the output on the yokogawa 
-            self.yoko.enable_output()                   
+        if self.statusMgr.isSimMode==True: 
+            if self.runMgr.isRunning==False: 
+                # start readout  
+                self.tmr.start(self.time_delay)
+                # get the run number, set to active status 
+                self.runMgr.updateRunNumber() 
+                self.fileMgr.makeDirectory(self.runMgr.runNum)  
+                self.runMgr.isRunning = True
+                # update the setpoint (get a timestamp on the current setpoint, even if zero)  
+                self.statusMgr.updateSetPoint(self.statusMgr.currentSetPoint)
+                # update status banner 
+                self.statusBar.showMessage("System: Run %d started" %(self.runMgr.runNum) ) 
+            else: 
+                self.statusBar.showMessage("System: Run %d already started" %(self.runMgr.runNum) ) 
         else: 
-            self.statusBar.showMessage("System: Run %d already started" %(self.runMgr.runNum) ) 
+            if self.runMgr.isRunning==False: 
+                # check for connectivity 
+                if self.statusMgr.isConnected==True: 
+                    # start readout of yokogawa 
+                    self.tmr.start(self.time_delay)
+                    # get the run number, set to active status 
+                    self.runMgr.updateRunNumber() 
+                    self.fileMgr.makeDirectory(self.runMgr.runNum)  
+                    self.runMgr.isRunning = True
+                    # update the setpoint (get a timestamp on the current setpoint, even if zero)  
+                    self.statusMgr.updateSetPoint(self.statusMgr.currentSetPoint)
+                    # update status banner 
+                    self.statusBar.showMessage("System: Run %d started" %(self.runMgr.runNum) ) 
+                    # enable the output on the yokogawa 
+                    self.yoko.enable_output()                  
+                else: 
+                    self.statusBar.showMessage("System: Cannot start the run, not connected to the Yokogawa.") 
+            else: 
+                self.statusBar.showMessage("System: Run %d already started" %(self.runMgr.runNum) ) 
+
 
     def stopRun(self):
         if self.runMgr.isRunning==True: 
-           # disable the output on the yokogawa 
-           self.yoko.disable_output()                   
+           # disable the output on the yokogawa
+           if self.statusMgr.isSimMode==False:  
+               self.yoko.disable_output()                   
            # stop readout  
            self.tmr.stop()
            # run is no longer active 
@@ -217,38 +265,44 @@ class YokoGUI(QtGui.QApplication):
            self.statusMgr.clearSetPointHistory() # clear for next run 
            # update status banner 
            filePath = "%s/run-%05d/%s.%s" %(self.dataDIR,self.runMgr.runNum,self.setpointFN,self.fileEXT)
-           self.statusBar.showMessage("System: Run %d stopped.  Set point history written to %s." %(self.runMgr.runNum,filePath) ) 
+           self.statusBar.showMessage("System: Run %d stopped.  Set point history written to: %s." %(self.runMgr.runNum,filePath) ) 
 
     def killDAQ(self): 
-        # FIXME: set Yokogawa to zero, disable, and disconnect 
         if self.runMgr.isRunning==True:
             self.statusBar.showMessage("System: Cannot quit until run %d is stopped" %(self.runMgr.runNum) )
-        else:  
-            # set the yokogawa level to zero 
-            self.yoko.set_level(0.);
-            # close the connection  
-            self.yoko.close_vxi_connection() 
+        else: 
+            if self.statusMgr.isSimMode==False: 
+                if self.statusMgr.isConnected==True:  
+                    # set the yokogawa level to zero 
+                    self.yoko.set_level(0.) 
+                    # disable the output 
+                    self.yoko.disable_output() 
+                    # close the connection  
+                    self.yoko.close_vxi_connection()
+                    self.statusMgr.isConnected = False  
             # quit the GUI 
             QtCore.QCoreApplication.instance().quit()
         
     # generate the data 
     def update(self):
-        # FIXME: readout value from the yokogawa 
         x = now_timestamp()
         if self.statusMgr.manualMode==1: 
-           y = self.statusMgr.currentSetPoint  
+           y = self.statusMgr.currentSetPoint*self.CONV_mA_TO_AMPS   # convert to Amps  
         else: 
-           y = get_data()
+           y = get_data()*self.CONV_mA_TO_AMPS                       # convert to Amps
         # program the yokogawa 
-        self.yoko.set_level(y) 
-        # wait a bit 
-        time.sleep(self.yoko_readout_delay)
-        lvl = self.yoko.get_level() 
+        if self.statusMgr.isSimMode==False: 
+            self.yoko.set_level(y) 
+            # wait a bit 
+            time.sleep(self.yoko_readout_delay)
+            lvl = self.yoko.get_level() 
+        else: 
+            lvl = y 
         rc = self.fileMgr.appendToFile(self.runMgr.runNum,self.dataFN,x,lvl) 
         if rc==1: 
             self.statusBar.showMessage("System: Cannot write data to file for run %d" %(self.runMgr.runNum) )
         self.data_x.append(x)
-        self.data_y.append(lvl)
+        self.data_y.append( lvl/self.CONV_mA_TO_AMPS )  # show plot in mA 
         self.myPlot.setData(x=list(self.data_x), y=list(self.data_y))
 
 def main():
