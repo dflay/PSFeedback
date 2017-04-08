@@ -1,4 +1,5 @@
 #! /usr/bin/python 
+# miscellaneous functions for the Yokogawa operation 
 
 import os.path 
 import sys
@@ -6,7 +7,7 @@ import numpy as np
 import datetime
 import random
 import pytz
-import pyqtgraph as pg 
+import pyqtgraph as pg
 
 UNIX_EPOCH_naive        = datetime.datetime(1970, 1, 1, 0, 0) # offset-naive datetime
 UNIX_EPOCH_offset_aware = datetime.datetime(1970, 1, 1, 0, 0, tzinfo = pytz.utc) # offset-aware datetime
@@ -16,8 +17,8 @@ TS_MULT_us              = 1e6
 #_______________________________________________________________________________
 # Miscellaneous functions and classes 
 
-def get_data():
-    return random.randrange(-250,250)
+def get_random(minVal,maxVal): 
+    return random.randrange(minVal,maxVal)
 
 def now_timestamp(ts_mult=TS_MULT_us, epoch=UNIX_EPOCH):
     return(int((datetime.datetime.utcnow() - epoch).total_seconds()*ts_mult))
@@ -88,16 +89,42 @@ class StatusManager:
         # for a history of setpoint changes 
         self.tsList           = [] 
         self.spList           = []
+        # PID values 
+        self.currentP         = 0 
+        self.currentI         = 0 
+        self.currentD         = 0 
+        # history of changes 
+        self.tPIDList         = []
+        self.pList            = [] 
+        self.iList            = [] 
+        self.dList            = [] 
 
     def updateSetPoint(self,val): 
         self.tsList.append( now_timestamp() )
         self.spList.append(val) 
         self.currentSetPoint = val  
 
+    def updatePID(self,P,I,D): 
+        self.tPIDList.append( now_timestamp() ) 
+        self.pList.append(P) 
+        self.iList.append(I) 
+        self.dList.append(D)
+        self.currentP = P  
+        self.currentI = I  
+        self.currentD = D  
+
     def clearSetPointHistory(self):
          # clear the array 
          del self.tsList[:] 
          del self.spList[:]
+
+    def clearPIDHistory(self):
+         # clear arrays
+         del self.tPIDList[:] 
+         del self.pList[:]
+         del self.iList[:]
+         del self.dList[:]
+
 #_______________________________________________________________________________
 # a class that handles all file I/O 
 class FileManager: 
@@ -155,6 +182,26 @@ class FileManager:
            rc = 1 
         return rc 
 
+    def writePIDHistoryFile(self,runNum,fn,tList,pList,iList,dList):
+        rc = 0 
+        theDir = self.getRunPath(runNum) 
+        outpath = '%s/%s.%s' %(theDir,fn,self.fileEXT)
+        # check if the directory exists before writing to file 
+        if (os.path.isdir(theDir)==True ): 
+           myFile = open(outpath,'w')
+           N = len(tList)
+           if N==0: 
+               # if no setpoints, write one line of zeros 
+               myFile.write("%d,%.6lf,%.6lf,%.6lf\n" %(0,0,0,0) ) 
+           else: 
+               for i in range(0,N): 
+                   myFile.write("%d,%.6lf,%.6lf,%.6lf\n" %(tList[i],pList[i],iList[i],dList[i]) )
+           myFile.close()
+        else:
+           if self.isDebug==True: print("[FileManager]: Cannot access the directory %s. " %(theDir) ) 
+           rc = 1 
+        return rc 
+
     def getRunPath(self,runNum): 
         thePath  = "%s/run-%05d" %(self.dataDir,runNum)
         return thePath 
@@ -164,3 +211,5 @@ class FileManager:
         if not os.path.exists(theDir):
             os.makedirs(theDir)
 #_______________________________________________________________________________
+
+

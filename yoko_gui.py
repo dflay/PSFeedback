@@ -1,18 +1,63 @@
 #! /usr/bin/python 
  
-from PyQt5.QtCore import QTime, QTimer
+from PyQt5.QtCore import QTime, QTimer, Qt
 from pyqtgraph.Qt import QtGui, QtCore
 from pyqtgraph.dockarea import *
 # import pyqtgraph as pg
 
 from collections import deque
 
-import time 
+import time
 
+from pid import PID 
 from util import *
-# import vxi11
 from instrument import yokogawa 
 
+class ParameterDialog(QtGui.QDialog): 
+    def __init__(self,parent=None): 
+        super(ParameterDialog,self).__init__(parent)  
+
+        self.myLayout = QtGui.QVBoxLayout(self)
+
+        self.header   = QtGui.QLabel("PID Loop Parameters") 
+        self.pLabel   = QtGui.QLabel("P Value") 
+        self.iLabel   = QtGui.QLabel("I Value") 
+        self.dLabel   = QtGui.QLabel("D Value") 
+        self.pField   = QtGui.QLineEdit()
+        self.iField   = QtGui.QLineEdit()
+        self.dField   = QtGui.QLineEdit()
+        # add objects to the layout 
+        self.myLayout.addWidget(self.header)
+        self.myLayout.addWidget(self.pLabel)
+        self.myLayout.addWidget(self.pField)
+        self.myLayout.addWidget(self.iLabel)
+        self.myLayout.addWidget(self.iField)
+        self.myLayout.addWidget(self.dLabel)
+        self.myLayout.addWidget(self.dField)
+        # OK and Cancel buttons
+        self.buttons = QtGui.QDialogButtonBox(
+                       QtGui.QDialogButtonBox.Ok | 
+                       QtGui.QDialogButtonBox.Cancel, 
+                       Qt.Horizontal, 
+                       self)
+        self.myLayout.addWidget(self.buttons)
+
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
+
+    def getPars(self):
+        pVal = self.pField.text() 
+        iVal = self.iField.text() 
+        dVal = self.dField.text() 
+        return (pVal,iVal,dVal)  
+
+    @staticmethod # make a static method that obtains the values from the dialog 
+    def getParameters(parent=None): 
+        dialog = ParameterDialog(parent)
+        result = dialog.exec_()
+        pVal,iVal,dVal = dialog.getPars() 
+        return (pVal,iVal,dVal,result==QtGui.QDialog.Accepted)
+ 
 class YokoGUI(QtGui.QApplication):
     def __init__(self, *args, **kwargs):
         super(YokoGUI, self).__init__(*args, **kwargs)
@@ -28,8 +73,8 @@ class YokoGUI(QtGui.QApplication):
         self.iMin            = -260                # in milliamps  
         self.iMax            =  260                # in milliamps 
         self.CONV_mA_TO_AMPS = 1E-3                # conversion mA -> A  
-        self.LOWER_LIMIT     = -200 
-        self.UPPER_LIMIT     =  200  
+        self.LOWER_LIMIT     = -200                # in mA 
+        self.UPPER_LIMIT     =  200                # in mA  
         # vectors for plotting data  
         self.max_len         = 200
         self.data_x          = deque(maxlen=self.max_len)
@@ -39,6 +84,7 @@ class YokoGUI(QtGui.QApplication):
         self.dataDIR      = "./data" 
         self.dataFN       = "yokogawa"
         self.setpointFN   = "setpoint_history"
+        self.pidFN        = "pid_history"
         self.fileEXT      = "csv"
         # yokogawa stuff 
         self.yoko_readout_delay = 0.50          # time in seconds 
@@ -48,12 +94,20 @@ class YokoGUI(QtGui.QApplication):
         self.yoko            = yokogawa()       # yokogawa object  
         self.runMgr          = RunManager()
         self.fileMgr         = FileManager()
-        self.statusMgr       = StatusManager()  
+        self.statusMgr       = StatusManager() 
         self.runMgr.dataDir  = self.dataDIR 
         self.fileMgr.dataDir = self.dataDIR 
         self.fileMgr.fileEXT = self.fileEXT 
+        self.lvl             = 0                # level read back from Yokogawa  
+        self.pidLoop         = PID() 
+        self.pidLoop.setKp(0.6)  
+        self.pidLoop.setKi(0.8)  
+        self.pidLoop.setKd(0.) 
+        self.pidLoop.setSampleTime(0.01) 
 
-        self.statusMgr.isSimMode = True             # ignore yokogawa, get random data 
+        self.statusMgr.isSimMode = True         # ignore yokogawa, get random data 
+        self.statusMgr.manualMode = 1           # default to manual mode 
+        self.statusMgr.autoMode   = 0
 
         # Enable antialiasing for prettier plots
         pg.setConfigOptions(antialias=True)
@@ -96,12 +150,15 @@ class YokoGUI(QtGui.QApplication):
         # manual and auto modes
         self.manual_mode = 1
         self.auto_mode   = 0
+        self.paramWidget = QtGui.QWidget() 
         self.mode_label  = QtGui.QLabel("Mode")
         self.manBtn      = QtGui.QPushButton('Manual')
         self.autoBtn     = QtGui.QPushButton('Auto')
+        self.paramBtn    = QtGui.QPushButton('Set Parameters...',self.paramWidget)
         self.w1.addWidget(self.mode_label   ,row=1, col=0)
         self.w1.addWidget(self.manBtn       ,row=1, col=1)
         self.w1.addWidget(self.autoBtn      ,row=1, col=2)
+        self.w1.addWidget(self.paramBtn     ,row=1, col=3)
         # set point 
         self.label      = QtGui.QLabel("Setpoint (mA)")
         self.setPtField = QtGui.QLineEdit()
@@ -114,7 +171,8 @@ class YokoGUI(QtGui.QApplication):
         self.autoBtn.clicked.connect(self.setAutoMode) 
         self.setPtBtn.clicked.connect(self.applySetPt)
         self.connBtn.clicked.connect(self.connectToDevice)  
-        self.disconnBtn.clicked.connect(self.disconnectFromDevice)  
+        self.disconnBtn.clicked.connect(self.disconnectFromDevice) 
+        self.paramBtn.clicked.connect(self.ShowParamWindow) 
         # add the widget to the dock 
         self.d1.addWidget(self.w1)
 
@@ -132,18 +190,23 @@ class YokoGUI(QtGui.QApplication):
         # dock 3: status bar 
         self.d3.hideTitleBar()
         self.w3       = pg.LayoutWidget()
+        # main status bar 
+        self.mstatusBar = QtGui.QStatusBar() 
+        self.mstatusBar.showMessage( "Run: -- | Setpoint: %.3f mA | Mode: Manual" %(self.statusMgr.currentSetPoint) ) 
         # a status bar 
         self.current_status = "System: Idle"
         self.statusBar = QtGui.QStatusBar() 
-        self.w3.addWidget(self.statusBar,row=0,col=0)
         self.statusBar.showMessage(self.current_status) 
         # a bunch of buttons
         self.startBtn = QtGui.QPushButton('Start Run')
         self.stopBtn  = QtGui.QPushButton('Stop Run')
         self.quitBtn  = QtGui.QPushButton('Quit')
-        self.w3.addWidget(self.startBtn,row=1, col=0)
-        self.w3.addWidget(self.stopBtn ,row=1, col=1)
-        self.w3.addWidget(self.quitBtn ,row=1, col=2)
+        # add widgets 
+        self.w3.addWidget(self.mstatusBar,row=0,col=0)
+        self.w3.addWidget(self.statusBar ,row=1,col=0)
+        self.w3.addWidget(self.startBtn  ,row=2,col=0)
+        self.w3.addWidget(self.stopBtn   ,row=2,col=1)
+        self.w3.addWidget(self.quitBtn   ,row=2,col=2)
         # button functions 
         self.startBtn.clicked.connect(self.startRun)
         self.stopBtn.clicked.connect(self.stopRun)
@@ -151,10 +214,25 @@ class YokoGUI(QtGui.QApplication):
         # add the widget to the dock 
         self.d3.addWidget(self.w3)
 
+
         self.tmr = QTimer()
         self.tmr.timeout.connect(self.update)
 
         self.win.show() 
+
+    def ShowParamWindow(self): 
+        pVal,iVal,dVal,ok = ParameterDialog.getParameters()
+        if ok: 
+           PVAL   = float(pVal)
+           IVAL   = float(iVal)
+           DVAL   = float(dVal)
+           self.statusMgr.updatePID(PVAL,IVAL,DVAL) 
+           self.pidLoop.setKp(self.statusMgr.currentP)
+           self.pidLoop.setKi(self.statusMgr.currentI)
+           self.pidLoop.setKd(self.statusMgr.currentD)
+           msg    = "System: Updated PID parameters: P = %.3f, I = %.3f, D = %.3f" \
+                    %(self.statusMgr.currentP,self.statusMgr.currentI,self.statusMgr.currentD)
+           self.statusBar.showMessage(msg)
 
     def connectToDevice(self):
         rc = 1 
@@ -194,25 +272,43 @@ class YokoGUI(QtGui.QApplication):
         try: 
             val = float(text)
             if val>self.LOWER_LIMIT and val<self.UPPER_LIMIT: 
-                self.statusMgr.updateSetPoint( val*self.CONV_mA_TO_AMPS )
-                self.statusBar.showMessage( "System: The setpoint is now %.3f mA" %(self.statusMgr.currentSetPoint/self.CONV_mA_TO_AMPS) ) 
+                self.statusMgr.updateSetPoint(val)
+                self.pidLoop.SetPoint = self.statusMgr.currentSetPoint 
+                msg = "System: The setpoint is now %.3f mA" %(self.pidLoop.SetPoint)
             else:
                 msg = "System: Setpoint out of bounds!  " \
                       "Requested: %.3f mA;  " \
                       "limits: low = %.3f, high = %.3f" %(val,self.LOWER_LIMIT,self.UPPER_LIMIT) 
-                self.statusBar.showMessage(msg) 
+            self.statusBar.showMessage(msg) 
         except: 
-            self.statusBar.showMessage( "System: Invalid setpoint value [NaN]!  No action taken") 
+            self.statusBar.showMessage("System: Invalid setpoint value [NaN]!  No action taken") 
+        self.mstatusBar.showMessage( self.getRunStatus() )
 
     def setManualMode(self):
         self.statusMgr.manualMode = 1
         self.statusMgr.autoMode   = 0
         self.statusBar.showMessage("System: In manual mode") 
+        self.mstatusBar.showMessage( self.getRunStatus() )
 
     def setAutoMode(self):
         self.statusMgr.manualMode = 0
         self.statusMgr.autoMode   = 1
         self.statusBar.showMessage("System: In auto mode") 
+        self.mstatusBar.showMessage( self.getRunStatus() )
+
+
+    def getRunStatus(self):
+        # determine a message to display in top banner
+        if self.runMgr.isRunning==True: 
+            run_state = "Active"
+        else:  
+            run_state = "Stopped"
+        if self.statusMgr.manualMode==1:
+            mode = "Manual"
+        else: 
+            mode = "Auto" 
+        msg = "Run: %d (%s) | Setpoint: %.3lf mA | Mode: %s" %(self.runMgr.runNum,run_state,self.statusMgr.currentSetPoint,mode)
+        return msg 
 
     def startRun(self):
         if self.statusMgr.isSimMode==True: 
@@ -227,6 +323,7 @@ class YokoGUI(QtGui.QApplication):
                 self.statusMgr.updateSetPoint(self.statusMgr.currentSetPoint)
                 # update status banner 
                 self.statusBar.showMessage("System: Run %d started" %(self.runMgr.runNum) ) 
+                self.mstatusBar.showMessage( self.getRunStatus() )
             else: 
                 self.statusBar.showMessage("System: Run %d already started" %(self.runMgr.runNum) ) 
         else: 
@@ -263,9 +360,15 @@ class YokoGUI(QtGui.QApplication):
            # print setpoint history 
            self.fileMgr.writeSetPointHistoryFile(self.runMgr.runNum,self.setpointFN,self.statusMgr.tsList,self.statusMgr.spList)
            self.statusMgr.clearSetPointHistory() # clear for next run 
+           self.fileMgr.writePIDHistoryFile(self.runMgr.runNum,self.pidFN, \
+                                            self.statusMgr.tPIDList,self.statusMgr.pList,self.statusMgr.iList,self.statusMgr.dList)
+           self.statusMgr.clearPIDHistory() # clear for next run 
            # update status banner 
            filePath = "%s/run-%05d/%s.%s" %(self.dataDIR,self.runMgr.runNum,self.setpointFN,self.fileEXT)
-           self.statusBar.showMessage("System: Run %d stopped.  Set point history written to: %s." %(self.runMgr.runNum,filePath) ) 
+           # msg = "System: Run %d stopped.  Set point history written to: %s." %(self.runMgr.runNum,filePath) 
+           msg = "System: Run %d stopped." %(self.runMgr.runNum) 
+           self.statusBar.showMessage(msg) 
+           self.mstatusBar.showMessage( self.getRunStatus() )
 
     def killDAQ(self): 
         if self.runMgr.isRunning==True:
@@ -287,23 +390,42 @@ class YokoGUI(QtGui.QApplication):
     def update(self):
         x = now_timestamp()
         if self.statusMgr.manualMode==1: 
-           y = self.statusMgr.currentSetPoint*self.CONV_mA_TO_AMPS   # convert to Amps  
+           y = self.statusMgr.currentSetPoint     
         else: 
-           y = get_data()*self.CONV_mA_TO_AMPS                       # convert to Amps
-        # program the yokogawa 
+           y = self.get_data()    
+        # check the level 
+        if y>self.LOWER_LIMIT and y<self.UPPER_LIMIT: 
+           # looks good, do nothing 
+           y = y 
+        else: 
+           msg = "System: Invalid level of %.3f attempted!  Setting to 80 percent of maximum." %(y)
+           if y>0: y = 0.8*self.UPPER_LIMIT 
+           if y<0: y = 0.8*self.LOWER_LIMIT
+           self.statusBar.showMessage(msg) 
+                              
         if self.statusMgr.isSimMode==False: 
-            self.yoko.set_level(y) 
+            # program the yokogawa 
+            self.yoko.set_level(y)                    # FIXME: relatively certain that we set the current in mA  
             # wait a bit 
             time.sleep(self.yoko_readout_delay)
-            lvl = self.yoko.get_level() 
-        else: 
-            lvl = y 
-        rc = self.fileMgr.appendToFile(self.runMgr.runNum,self.dataFN,x,lvl) 
+            self.lvl = self.yoko.get_level()/self.CONV_mA_TO_AMPS   # the readout is in Amps; convert to mA   
+        else:
+            # test mode; use the random data  
+            self.lvl = y 
+        rc = self.fileMgr.appendToFile(self.runMgr.runNum,self.dataFN,x,self.lvl) 
         if rc==1: 
             self.statusBar.showMessage("System: Cannot write data to file for run %d" %(self.runMgr.runNum) )
         self.data_x.append(x)
-        self.data_y.append( lvl/self.CONV_mA_TO_AMPS )  # show plot in mA 
+        self.data_y.append(self.lvl)   
         self.myPlot.setData(x=list(self.data_x), y=list(self.data_y))
+
+    def get_data(self):  
+        # this is where we would get some value from the fixed probes
+        # for now, use a random number generator  
+        val = get_random(self.LOWER_LIMIT,self.UPPER_LIMIT)
+        self.pidLoop.update(val)       # how does the fixed probe readout compare to the setpoint?    
+        return self.pidLoop.output 
+        
 
 def main():
     # if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
