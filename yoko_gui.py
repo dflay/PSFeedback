@@ -241,8 +241,8 @@ class YokoGUI(QtGui.QApplication):
             self.statusBar.showMessage("System: IP address string is empty!") 
         else:  
             if self.statusMgr.isConnected==False: 
-                self.statusBar.showMessage("System: Connecting to device with IP address %s" %(self.statusMgr.ipAddr) ) 
                 if(self.statusMgr.isSimMode==False): 
+                    self.statusBar.showMessage("System: Connecting to device with IP address %s" %(self.statusMgr.ipAddr) ) 
                     rc = self.yoko.open_vxi_connection(self.statusMgr.ipAddr)
                     self.yoko_status = self.yoko.status_msg 
                     self.statusBar.showMessage("System: %s" %(self.yoko_status) ) 
@@ -252,6 +252,8 @@ class YokoGUI(QtGui.QApplication):
                         self.yoko.set_range_max() 
                         self.yoko.set_level(0.0)               # set to zero mA
                         self.statusMgr.isConnected = True 
+                else: 
+                    self.statusBar.showMessage("System: Cannot connect to device, in simulation mode") 
             else: 
                 self.statusBar.showMessage("System: Already connected at IP address %s" %(self.statusMgr.ipAddr) ) 
 
