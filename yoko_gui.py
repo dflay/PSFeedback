@@ -285,22 +285,22 @@ class YokoGUI(QtGui.QApplication):
             self.statusBar.showMessage(msg) 
         except: 
             self.statusBar.showMessage("System: Invalid setpoint value [NaN]!  No action taken") 
-        self.mstatusBar.showMessage( self.getRunStatus() )
+        self.mstatusBar.showMessage( self.getSystemStatus() )
 
     def setManualMode(self):
         self.statusMgr.manualMode = 1
         self.statusMgr.autoMode   = 0
         self.statusBar.showMessage("System: In manual mode") 
-        self.mstatusBar.showMessage( self.getRunStatus() )
+        self.mstatusBar.showMessage( self.getSystemStatus() )
 
     def setAutoMode(self):
         self.statusMgr.manualMode = 0
         self.statusMgr.autoMode   = 1
         self.statusBar.showMessage("System: In auto mode") 
-        self.mstatusBar.showMessage( self.getRunStatus() )
+        self.mstatusBar.showMessage( self.getSystemStatus() )
 
 
-    def getRunStatus(self):
+    def getSystemStatus(self):
         # determine a message to display in top banner
         if self.runMgr.isRunning==True: 
             run_state = "Active"
@@ -311,6 +311,8 @@ class YokoGUI(QtGui.QApplication):
         else: 
             mode = "Auto" 
         msg = "Run: %d (%s) | Setpoint: %.3lf mA | Mode: %s" %(self.runMgr.runNum,run_state,self.statusMgr.currentSetPoint,mode)
+        if self.statusMgr.isConnected==True: 
+            msg = "%s | Connected to device at IP address: %s" %(msg,self.statusMgr.ipAddr)
         return msg 
 
     def startRun(self):
@@ -326,7 +328,7 @@ class YokoGUI(QtGui.QApplication):
                 self.statusMgr.updateSetPoint(self.statusMgr.currentSetPoint)
                 # update status banner 
                 self.statusBar.showMessage("System: Run %d started" %(self.runMgr.runNum) ) 
-                self.mstatusBar.showMessage( self.getRunStatus() )
+                self.mstatusBar.showMessage( self.getSystemStatus() )
             else: 
                 self.statusBar.showMessage("System: Run %d already started" %(self.runMgr.runNum) ) 
         else: 
@@ -371,7 +373,7 @@ class YokoGUI(QtGui.QApplication):
            # msg = "System: Run %d stopped.  Set point history written to: %s." %(self.runMgr.runNum,filePath) 
            msg = "System: Run %d stopped." %(self.runMgr.runNum) 
            self.statusBar.showMessage(msg) 
-           self.mstatusBar.showMessage( self.getRunStatus() )
+           self.mstatusBar.showMessage( self.getSystemStatus() )
 
     def killDAQ(self): 
         if self.runMgr.isRunning==True:
