@@ -262,14 +262,17 @@ class YokoGUI(QtGui.QApplication):
     def disconnectFromDevice(self): 
         if self.statusMgr.isSimMode==False: 
             if self.statusMgr.isConnected==True: 
-                self.yoko.disable_output() 
-                self.yoko.close_vxi_connection() 
-                self.yoko_status = self.yoko.status_msg 
-                self.statusBar.showMessage("System: %s" %(self.yoko_status) ) 
-                self.statusMgr.isConnected = False
-                self.mstatusBar.showMessage( self.getSystemStatus() )
+                if self.runMgr.isRunning==False: 
+                    self.yoko.disable_output() 
+                    self.yoko.close_vxi_connection() 
+                    self.yoko_status = self.yoko.status_msg 
+                    self.statusBar.showMessage("System: %s" %(self.yoko_status) ) 
+                    self.statusMgr.isConnected = False
+                    self.mstatusBar.showMessage( self.getSystemStatus() )
+                else: 
+                    self.statusBar.showMessage("System: Cannot disconnect from the Yokogawa during a run!") 
             else: 
-                self.statusBar.showMessage("System: Already disconnected from Yokogawa.") 
+                self.statusBar.showMessage("System: Already disconnected from the Yokogawa.") 
         else: 
             self.statusBar.showMessage("System: In simulation mode, nothing to disconnect from.") 
 
@@ -301,7 +304,6 @@ class YokoGUI(QtGui.QApplication):
         self.statusMgr.autoMode   = 1
         self.statusBar.showMessage("System: In auto mode") 
         self.mstatusBar.showMessage( self.getSystemStatus() )
-
 
     def getSystemStatus(self):
         # determine a message to display in top banner
