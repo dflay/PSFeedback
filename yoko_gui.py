@@ -99,6 +99,7 @@ class YokoGUI(QtGui.QApplication):
         self.fileMgr.dataDir = self.dataDIR 
         self.fileMgr.fileEXT = self.fileEXT 
         self.lvl             = 0                # level read back from Yokogawa  
+        self.prev_lvl        = 0                # the previous level 
         self.pidLoop         = PID() 
         self.pidLoop.setKp(0.6)  
         self.pidLoop.setKi(0.8)  
@@ -403,11 +404,12 @@ class YokoGUI(QtGui.QApplication):
            msg = "System: Invalid level of %.3f attempted!  Setting to 80 percent of maximum." %(y)
            if y>0: y = 0.8*self.UPPER_LIMIT 
            if y<0: y = 0.8*self.LOWER_LIMIT
-           self.statusBar.showMessage(msg) 
+           self.statusBar.showMessage(msg)
                               
         if self.statusMgr.isSimMode==False: 
             # program the yokogawa 
-            self.yoko.set_level(y)                    # FIXME: relatively certain that we set the current in mA  
+            if self.prev_lvl!=y:                          # check to see if the yokogawa level changed 
+                self.yoko.set_level(y)                    # FIXME: relatively certain that we set the current in mA  
             # wait a bit 
             time.sleep(self.yoko_readout_delay)
             self.lvl = self.yoko.get_level()/self.CONV_mA_TO_AMPS   # the readout is in Amps; convert to mA   
@@ -420,6 +422,8 @@ class YokoGUI(QtGui.QApplication):
         self.data_x.append(x)
         self.data_y.append(self.lvl)   
         self.myPlot.setData(x=list(self.data_x), y=list(self.data_y))
+        # save the level as the previous one 
+        self.prev_lvl = self.lvl 
 
     def get_data(self):  
         # this is where we would get some value from the fixed probes
