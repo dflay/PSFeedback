@@ -253,6 +253,7 @@ class YokoGUI(QtGui.QApplication):
                         self.yoko.set_range_max() 
                         self.yoko.set_level(0.0)               # set to zero mA
                         self.statusMgr.isConnected = True 
+                        self.mstatusBar.showMessage( self.getSystemStatus() )
                 else: 
                     self.statusBar.showMessage("System: Cannot connect to device, in simulation mode") 
             else: 
@@ -265,6 +266,8 @@ class YokoGUI(QtGui.QApplication):
                 self.yoko.close_vxi_connection() 
                 self.yoko_status = self.yoko.status_msg 
                 self.statusBar.showMessage("System: %s" %(self.yoko_status) ) 
+                self.statusMgr.isConnected = False
+                self.mstatusBar.showMessage( self.getSystemStatus() )
             else: 
                 self.statusBar.showMessage("System: Already disconnected from Yokogawa.") 
         else: 
