@@ -221,19 +221,26 @@ class YokoGUI(QtGui.QApplication):
 
         self.win.show() 
 
-    def ShowParamWindow(self): 
+    def ShowParamWindow(self):
+        validInput = True 
         pVal,iVal,dVal,ok = ParameterDialog.getParameters()
         if ok: 
-           PVAL   = float(pVal)
-           IVAL   = float(iVal)
-           DVAL   = float(dVal)
-           self.statusMgr.updatePID(PVAL,IVAL,DVAL) 
-           self.pidLoop.setKp(self.statusMgr.currentP)
-           self.pidLoop.setKi(self.statusMgr.currentI)
-           self.pidLoop.setKd(self.statusMgr.currentD)
-           msg    = "System: Updated PID parameters: P = %.3f, I = %.3f, D = %.3f" \
-                    %(self.statusMgr.currentP,self.statusMgr.currentI,self.statusMgr.currentD)
-           self.statusBar.showMessage(msg)
+           try: 
+               PVAL   = float(pVal)
+               IVAL   = float(iVal)
+               DVAL   = float(dVal)
+           except: 
+               self.statusBar.showMessage("System: No PID values entered.  No action taken.")
+               validInput = False 
+        if validInput: 
+               self.statusMgr.updatePID(PVAL,IVAL,DVAL) 
+               self.pidLoop.setKp(self.statusMgr.currentP)
+               self.pidLoop.setKi(self.statusMgr.currentI)
+               self.pidLoop.setKd(self.statusMgr.currentD)
+               msg    = "System: Updated PID parameters: P = %.3f, I = %.3f, D = %.3f" \
+                        %(self.statusMgr.currentP,self.statusMgr.currentI,self.statusMgr.currentD)
+               self.statusBar.showMessage(msg)
+
 
     def connectToDevice(self):
         rc = 1 
