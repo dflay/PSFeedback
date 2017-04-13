@@ -22,7 +22,10 @@ print("----------- Testing Yokogawa Communication -----------")
 yoko    = yokogawa()
 # open the VXI-connection  
 ip_addr = "192.168.5.160"  
-yoko.open_vxi_connection(ip_addr)
+rc = yoko.open_vxi_connection(ip_addr)
+print(yoko.status_msg)
+if rc==1:
+    sys.exit()
 # get device ID 
 dev_id = yoko.get_device_id()
 yoko.Print() 
