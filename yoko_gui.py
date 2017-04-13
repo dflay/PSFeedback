@@ -91,7 +91,8 @@ class YokoGUI(QtGui.QApplication):
         self.yoko_status        = "NONE"
 
         # my variables 
-        self.yoko            = yokogawa()       # yokogawa object  
+        self.yoko            = yokogawa()       # yokogawa object 
+        self.yoko_event      = YokogawaEvent()  # an event object that keeps track of all data  
         self.runMgr          = RunManager()
         self.fileMgr         = FileManager()
         self.statusMgr       = StatusManager() 
@@ -430,6 +431,8 @@ class YokoGUI(QtGui.QApplication):
         else:
             # test mode; use the random data  
             self.lvl = y 
+        self.yoko_event.timestamp = x 
+        self.yoko_event.current   = self.lvl 
         rc = self.fileMgr.appendToFile(self.runMgr.runNum,self.dataFN,x,self.lvl) 
         if rc==1: 
             self.statusBar.showMessage("System: Cannot write data to file for run %d" %(self.runMgr.runNum) )

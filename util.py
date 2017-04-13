@@ -57,7 +57,6 @@ class YokogawaEvent:
         self.i_fdbk         = 0 
         self.d_fdbk         = 0 
         self.setpoint       = 0 
-
 #_______________________________________________________________________________
 # a class to keep track of the run number, and its start and stop times 
 class RunManager: 
