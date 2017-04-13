@@ -45,6 +45,18 @@ class TimeAxisItem(pg.AxisItem):
         # return [QTime().addMSecs(value).toString('mm:ss') for value in values]
         # return [int2dt(value).strftime("%H:%M:%S.%f") for value in values]
         return [int2dt(value).strftime("%H:%M:%S") for value in values]
+#_______________________________________________________________________________
+# a class to keep track of the yokogawa data for a given readout event 
+class YokogawaEvent: 
+    def __init__(self): 
+        self.timestamp      = 0 
+        self.is_manual      = 0 
+        self.output_enabled = 0 
+        self.current        = 0 
+        self.p_fdbk         = 0 
+        self.i_fdbk         = 0 
+        self.d_fdbk         = 0 
+        self.setpoint       = 0 
 
 #_______________________________________________________________________________
 # a class to keep track of the run number, and its start and stop times 
