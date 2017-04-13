@@ -49,6 +49,9 @@ class TimeAxisItem(pg.AxisItem):
 # a class to keep track of the yokogawa data for a given readout event 
 class YokogawaEvent: 
     def __init__(self): 
+        self.clearEvent()  
+
+    def clearEvent(self): 
         self.timestamp      = 0 
         self.is_manual      = 0 
         self.output_enabled = 0 
@@ -57,6 +60,8 @@ class YokogawaEvent:
         self.i_fdbk         = 0 
         self.d_fdbk         = 0 
         self.setpoint       = 0 
+       
+
 #_______________________________________________________________________________
 # a class to keep track of the run number, and its start and stop times 
 class RunManager: 

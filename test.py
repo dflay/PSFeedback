@@ -5,7 +5,7 @@ import sys
 import time 
 from instrument import yokogawa 
 from timeit     import default_timer as timer
-
+from util       import YokogawaEvent
 # start a timer 
 t_start = timer()
 
@@ -15,6 +15,10 @@ t_start = timer()
 # print "Command line args:"
 # for entry in arglist:
 #     print "{0}".format(entry)
+
+myEvent = YokogawaEvent() 
+
+print(myEvent.current)
 
 print("----------- Testing Yokogawa Communication -----------")
 
@@ -31,14 +35,15 @@ dev_id = yoko.get_device_id()
 yoko.Print() 
 # get the mode  
 mode = yoko.get_mode() 
-print "mode = {0}".format(mode)  
+print("mode = {0}".format(mode)) 
 # get the current/voltage level 
 current = yoko.get_level() 
-print "level = {0:.4f} mA".format( float(current)/1E-3 ) 
+print("level = {0:.4f} mA".format( float(current)/1E-3 )) 
 # close the connection 
 yoko.close_vxi_connection()
 # stop the timer 
 t_stop = timer() 
 dt     = t_stop - t_start
-print "elapsed time: {0:.4f}".format(dt)
+print("elapsed time: {0:.4f}".format(dt))
+
 

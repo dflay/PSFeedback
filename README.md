@@ -15,6 +15,7 @@ click **Start Run**.  To stop a run, click **Stop Run**.
 
 Some libraries are needed to run the GUI: 
 1. python-vxi11 (https://github.com/python-ivi/python-vxi11) 
+2. numpy
 2. SIP (to install PyQt) 
 3. PyQt (4 or 5) and/or PySide 
 4. pyqtgraph
@@ -23,6 +24,8 @@ Some libraries are needed to run the GUI:
 
 1. Run `sudo python setup.py install` from the python-vxi11 directory
 2. Modify `PYTHONPATH` in your bashrc to `export PYTHONPATH = /usr/lib/python2.6/site-packages/python_vxi11-0.9-py2.6.egg:$PYTHONPATH` 
+
+### numpy
 
 ### SIP 
 
