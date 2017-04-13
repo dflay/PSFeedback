@@ -18,6 +18,10 @@ Some libraries are needed to run the GUI:
 
 ### SIP 
 
+1. Go to /lib/ directory and unpack the SIP library
+2. Run the configure script `python configure.py`; this will create the Makefile and associated tools
+3. Run `make`, then `sudo make install`.   
+
 ### PyQt 
 
 ### pyqtgraph
