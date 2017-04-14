@@ -51,7 +51,8 @@ class YokogawaEvent:
     def __init__(self): 
         self.clear()  
 
-    def clear(self): 
+    def clear(self):
+        self.ID             = 0  
         self.timestamp      = 0 
         self.is_manual      = 0 
         self.output_enabled = 0 

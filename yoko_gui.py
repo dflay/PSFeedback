@@ -82,7 +82,7 @@ class YokoGUI(QtGui.QApplication):
 
         # directories and filenames 
         self.dataDIR            = "./data" 
-        self.dataFN             = "yokogawa"
+        self.dataFN             = "ps-feedback"
         self.setpointFN         = "setpoint_history"
         self.pidFN              = "pid_history"
         self.fileEXT            = "csv"
@@ -106,6 +106,8 @@ class YokoGUI(QtGui.QApplication):
         self.pidLoop.setKi(0.8)  
         self.pidLoop.setKd(0.) 
         self.pidLoop.setSampleTime(0.01) 
+
+        self.yoko_event.clear() 
 
         self.statusMgr.isSimMode  = True        # ignore yokogawa, get random data 
         self.statusMgr.manualMode = 1           # default to manual mode 
@@ -433,6 +435,7 @@ class YokoGUI(QtGui.QApplication):
             # test mode; use the random data  
             self.lvl = y 
         # save the data to the event object 
+        self.yoko_event.ID             = self.yoko_event.ID + 1 
         self.yoko_event.timestamp      = x 
         self.yoko_event.current        = self.lvl
         self.yoko_event.setpoint       = self.statusMgr.currentSetPoint 
