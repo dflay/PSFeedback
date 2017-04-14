@@ -25,7 +25,7 @@ class yokogawa(object):
         rc = 0 
         try:
             self.dev = vxi11.Instrument(VISA_str)
-            self.dev.settimeout(20)  # set timeout to 20 seconds  
+            # self.dev.settimeout(20)  # set timeout to 20 seconds  
             self.dev.open() 
         except: 
             if(self.isDebug==True): 

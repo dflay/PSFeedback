@@ -5,7 +5,6 @@ import sys
 import time 
 from instrument import yokogawa 
 from timeit     import default_timer as timer
-from util       import YokogawaEvent
 # start a timer 
 t_start = timer()
 
@@ -15,10 +14,6 @@ t_start = timer()
 # print "Command line args:"
 # for entry in arglist:
 #     print "{0}".format(entry)
-
-myEvent = YokogawaEvent() 
-
-print(myEvent.current)
 
 print("----------- Testing Yokogawa Communication -----------")
 

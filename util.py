@@ -56,10 +56,10 @@ class YokogawaEvent:
         self.is_manual      = 0 
         self.output_enabled = 0 
         self.current        = 0 
+        self.setpoint       = 0 
         self.p_fdbk         = 0 
         self.i_fdbk         = 0 
         self.d_fdbk         = 0 
-        self.setpoint       = 0 
 
 #_______________________________________________________________________________
 # a class to keep track of the run number, and its start and stop times 
@@ -76,13 +76,18 @@ class RunManager:
         self.runNum = self.getRunNumber()
 
     def getRunNumber(self):
-        dirs = [d for d in os.listdir(self.dataDir) if os.path.isdir( os.path.join(self.dataDir,d) ) ] 
-        N = len(dirs) 
+        # dirs  = [d for d in os.listdir(self.dataDir) if os.path.isdir( os.path.join(self.dataDir,d) ) ] 
+        files = [f for f in os.listdir(self.dataDir) if os.path.isfile(os.path.join(self.dataDir,f) ) ]
+        N = len(files) 
         runList = []
         lastRun = -300 
         if N>0:  
-            for entry in dirs: 
-                arg = int(entry.strip('run-') )
+            for entry in files:
+                # path = '%s/%s' %(self.dataDir,entry) 
+                fn   = os.path.splitext( os.path.basename(entry) )[0] # take the zeroth entry of the split function  
+                print(fn) 
+                # arg = int(entry.strip('run-') )
+                arg = int(fn.strip('yokogawa_run-') )
                 if arg>=lastRun: lastRun = arg
         else: 
             lastRun = 0 
@@ -162,6 +167,23 @@ class FileManager:
            rc = 1 
         return rc 
 
+    def writeYokogawaEvent(self,runNum,tag,event): 
+        rc = 0 
+        theDir  = self.getRunPath(runNum) 
+        fn      = '%s_run-%05d.%s' %(tag,runNum,self.fileEXT) 
+        outpath = './data/%s'      %(fn)
+        # check if the directory exists before writing to file 
+        if (os.path.isdir(theDir)==True ): 
+           myFile = open(outpath,'a')
+           myFile.write("%d,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f\n" %(event.timestamp,event.is_manual,event.output_enabled,\
+                                                                event.current,event.setpoint,\
+                                                                event.p_fdbk,event.i_fdbk,event.d_fdbk) )
+           myFile.close()
+        else:
+           if self.isDebug==True: print("[FileManager]: Cannot access the directory %s. " %(theDir) ) 
+           rc = 1 
+        return rc 
+       
     def writeSummaryFile(self,runNum,fn,msg):
         rc = 0 
         theDir = self.getRunPath(runNum) 

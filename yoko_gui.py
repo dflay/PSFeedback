@@ -81,11 +81,11 @@ class YokoGUI(QtGui.QApplication):
         self.data_y          = deque(maxlen=self.max_len) 
 
         # directories and filenames 
-        self.dataDIR      = "./data" 
-        self.dataFN       = "yokogawa"
-        self.setpointFN   = "setpoint_history"
-        self.pidFN        = "pid_history"
-        self.fileEXT      = "csv"
+        self.dataDIR            = "./data" 
+        self.dataFN             = "yokogawa"
+        self.setpointFN         = "setpoint_history"
+        self.pidFN              = "pid_history"
+        self.fileEXT            = "csv"
         # yokogawa stuff 
         self.yoko_readout_delay = 0.50          # time in seconds 
         self.yoko_status        = "NONE"
@@ -107,7 +107,7 @@ class YokoGUI(QtGui.QApplication):
         self.pidLoop.setKd(0.) 
         self.pidLoop.setSampleTime(0.01) 
 
-        self.statusMgr.isSimMode = True         # ignore yokogawa, get random data 
+        self.statusMgr.isSimMode  = True        # ignore yokogawa, get random data 
         self.statusMgr.manualMode = 1           # default to manual mode 
         self.statusMgr.autoMode   = 0
 
@@ -335,7 +335,7 @@ class YokoGUI(QtGui.QApplication):
                 self.tmr.start(self.time_delay)
                 # get the run number, set to active status 
                 self.runMgr.updateRunNumber() 
-                self.fileMgr.makeDirectory(self.runMgr.runNum)  
+                # self.fileMgr.makeDirectory(self.runMgr.runNum)  
                 self.runMgr.isRunning = True
                 # update the setpoint (get a timestamp on the current setpoint, even if zero)  
                 self.statusMgr.updateSetPoint(self.statusMgr.currentSetPoint)
@@ -352,14 +352,14 @@ class YokoGUI(QtGui.QApplication):
                     self.tmr.start(self.time_delay)
                     # get the run number, set to active status 
                     self.runMgr.updateRunNumber() 
-                    self.fileMgr.makeDirectory(self.runMgr.runNum)  
+                    # self.fileMgr.makeDirectory(self.runMgr.runNum)  
                     self.runMgr.isRunning = True
                     # update the setpoint (get a timestamp on the current setpoint, even if zero)  
                     self.statusMgr.updateSetPoint(self.statusMgr.currentSetPoint)
                     # update status banner 
                     self.statusBar.showMessage("System: Run %d started" %(self.runMgr.runNum) ) 
                     # enable the output on the yokogawa 
-                    self.yoko.enable_output()                  
+                    # self.yoko.enable_output()                  
                 else: 
                     self.statusBar.showMessage("System: Cannot start the run, not connected to the Yokogawa.") 
             else: 
@@ -376,10 +376,10 @@ class YokoGUI(QtGui.QApplication):
            # run is no longer active 
            self.runMgr.isRunning = False
            # print setpoint history 
-           self.fileMgr.writeSetPointHistoryFile(self.runMgr.runNum,self.setpointFN,self.statusMgr.tsList,self.statusMgr.spList)
+           # self.fileMgr.writeSetPointHistoryFile(self.runMgr.runNum,self.setpointFN,self.statusMgr.tsList,self.statusMgr.spList)
            self.statusMgr.clearSetPointHistory() # clear for next run 
-           self.fileMgr.writePIDHistoryFile(self.runMgr.runNum,self.pidFN, \
-                                            self.statusMgr.tPIDList,self.statusMgr.pList,self.statusMgr.iList,self.statusMgr.dList)
+           # self.fileMgr.writePIDHistoryFile(self.runMgr.runNum,self.pidFN, \
+           #                                 self.statusMgr.tPIDList,self.statusMgr.pList,self.statusMgr.iList,self.statusMgr.dList)
            self.statusMgr.clearPIDHistory() # clear for next run 
            # update status banner 
            filePath = "%s/run-%05d/%s.%s" %(self.dataDIR,self.runMgr.runNum,self.setpointFN,self.fileEXT)
@@ -427,13 +427,26 @@ class YokoGUI(QtGui.QApplication):
                 self.yoko.set_level(y)                    # FIXME: relatively certain that we set the current in mA  
             # wait a bit 
             time.sleep(self.yoko_readout_delay)
-            self.lvl = self.yoko.get_level()/self.CONV_mA_TO_AMPS   # the readout is in Amps; convert to mA   
+            my_lvl   = float( self.yoko.get_level() ) 
+            self.lvl = my_lvl/self.CONV_mA_TO_AMPS   # the readout is in Amps; convert to mA   
         else:
             # test mode; use the random data  
             self.lvl = y 
-        self.yoko_event.timestamp = x 
-        self.yoko_event.current   = self.lvl 
-        rc = self.fileMgr.appendToFile(self.runMgr.runNum,self.dataFN,x,self.lvl) 
+        # save the data to the event object 
+        self.yoko_event.timestamp      = x 
+        self.yoko_event.current        = self.lvl
+        self.yoko_event.setpoint       = self.statusMgr.currentSetPoint 
+        self.yoko_event.is_manual      = self.statusMgr.manualMode
+        if self.statusMgr.isSimMode==False: 
+            self.yoko_event.output_enabled = int( self.yoko.get_output_state() ) 
+        else: 
+            self.yoko_event.output_enabled = 0 
+        self.yoko_event.p_fdbk         = self.pidLoop.Kp
+        self.yoko_event.i_fdbk         = self.pidLoop.Ki
+        self.yoko_event.d_fdbk         = self.pidLoop.Kd
+        # now write to file 
+        # rc = self.fileMgr.appendToFile(self.runMgr.runNum,self.dataFN,x,self.lvl) 
+        rc = self.fileMgr.writeYokogawaEvent(self.runMgr.runNum,self.dataFN,self.yoko_event) 
         if rc==1: 
             self.statusBar.showMessage("System: Cannot write data to file for run %d" %(self.runMgr.runNum) )
         self.data_x.append(x)
