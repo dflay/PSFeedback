@@ -16,9 +16,10 @@ click **Start Run**.  To stop a run, click **Stop Run**.
 Some libraries are needed to run the GUI: 
 1. python-vxi11 (https://github.com/python-ivi/python-vxi11) 
 2. numpy
-2. SIP (to install PyQt) 
-3. PyQt (4 or 5) and/or PySide 
-4. pyqtgraph
+3. SIP (to install PyQt) 
+4. qmake
+5. PyQt (4 or 5)  
+6. pyqtgraph
 
 ### VXI-11
 
@@ -38,17 +39,21 @@ To install SIP, first activate the python environment (pyenv)
 2. Run the configure script `python configure.py`; this will create the Makefile and associated tools
 3. Run `make`, then `sudo make install`.   
 
-### Qt 
-
 ### qmake 
+
+Tool for generating configure script for qmake-based projects (needed for PyQt) 
 
 1. Enter into the python environment by running `pyenv` 
 2. Run `sudo yum install qconf.x86_64` 
 
-### PyQt 
+### PyQt4 or PyQt5  
+
+1. Go into the python environment
+2. Should grab PySide: `sudo yum install python-pyside.x86_64`
 
 ### pyqtgraph
 
 1. Go to /lib/pyqtgraph-0.10.0
 2. Run the installation script `sudo python setup.py install` 
+3. Modify `PYTHONPATH` in your bashrc to `export PYTHONPATH = /usr/lib/python2.6/site-packages/:$PYTHONPATH` 
 
