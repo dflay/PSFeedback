@@ -27,6 +27,9 @@ Some libraries are needed to run the GUI:
 
 ### numpy
 
+1. Enter into the python environment by running `pyenv` 
+2. Run `sudo yum install numpy.x86_64` 
+
 ### SIP 
 
 To install SIP, first activate the python environment (pyenv) 
@@ -34,6 +37,13 @@ To install SIP, first activate the python environment (pyenv)
 1. Go to /lib/ directory and unpack the SIP library
 2. Run the configure script `python configure.py`; this will create the Makefile and associated tools
 3. Run `make`, then `sudo make install`.   
+
+### Qt 
+
+### qmake 
+
+1. Enter into the python environment by running `pyenv` 
+2. Run `sudo yum install qconf.x86_64` 
 
 ### PyQt 
 
