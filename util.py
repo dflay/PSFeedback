@@ -9,6 +9,8 @@ import random
 import pytz
 import pyqtgraph as pg
 
+from ROOT import gROOT, AddressOf, TFile, TTree
+
 UNIX_EPOCH_naive        = datetime.datetime(1970, 1, 1, 0, 0) # offset-naive datetime
 UNIX_EPOCH_offset_aware = datetime.datetime(1970, 1, 1, 0, 0, tzinfo = pytz.utc) # offset-aware datetime
 UNIX_EPOCH              = UNIX_EPOCH_naive
@@ -184,7 +186,64 @@ class FileManager:
            if self.isDebug==True: print("[FileManager]: Cannot access the directory %s. " %(theDir) ) 
            rc = 1 
         return rc 
-       
+      
+    def writeROOTFile(self,runNum,tag,event): 
+
+        gROOT.ProcessLine(
+        "struct yokogawa_event{\
+          Int_t  ftimestamp;\
+          Int_t  fis_manual;\
+          Int_t  foutput_enabled;\
+          Double_t fcurrent;\ 
+          Double_t fp_fdbk;\
+          Double_t fi_fdbk;\
+          Double_t fd_fdbk;\
+          Double_t fsetpoint;\
+         };")
+
+
+        from ROOT import yokogawa_event 
+        yoko_event = yokogawa_event() 
+
+        event_num = event.ID
+
+        fileName   = "./data/%s_run-%05d.root" %(tag,runNum)
+        treeName   = "T" 
+        branchName = "yoko"
+        leafStructure = "timestamp/I:is_manual/I:output_enabled/I:current/D:p_fdbk/D:i_fdbk/D:d_fdbk/D:setpoint/D"
+
+        # update the value of the data structure 
+        yoko_event.timestamp      = int( event.timestamp )
+        yoko_event.is_manual      = int( event.is_manual )
+        yoko_event.output_enabled = int( event.output_enabled )
+        yoko_event.current        = float( event.current )
+        yoko_event.p_fdbk         = float( event.p_fdbk )
+        yoko_event.i_fdbk         = float( event.i_fdbk )
+        yoko_event.d_fdbk         = float( event.d_fdbk )
+        yoko_event.setpoint       = float( event.setpoint )  
+
+        if event_num==1:
+            # make a new file  
+            myFile = TFile(fileName,"recreate")
+            myTree = TTree(treeName,treeName) 
+            myTree.Branch(branchName,yoko_event,leafStructure)
+        else: 
+            # appending to file   
+            myFile = TFile(fileName,"read") 
+            myTree = myFile.Get(treeName)
+            myTree.SetBranchAddress("timestamp"     ,AddressOf(yoko_event,"timestamp")      ) 
+            myTree.SetBranchAddress("is_manual"     ,AddressOf(yoko_event,"is_manual")      ) 
+            myTree.SetBranchAddress("output_enabled",AddressOf(yoko_event,"output_enabled") ) 
+            myTree.SetBranchAddress("current"       ,AddressOf(yoko_event,"current")        ) 
+            myTree.SetBranchAddress("p_fdbk"        ,AddressOf(yoko_event,"p_fdbk")         ) 
+            myTree.SetBranchAddress("i_fdbk"        ,AddressOf(yoko_event,"i_fdbk")         ) 
+            myTree.SetBranchAddress("d_fdbk"        ,AddressOf(yoko_event,"d_fdbk")         ) 
+            myTree.SetBranchAddress("setpoint"      ,AddressOf(yoko_event,"setpoint")       ) 
+
+        myTree.Fill()
+        myFile.Write()
+        myFile.Close() 
+ 
     def writeSummaryFile(self,runNum,fn,msg):
         rc = 0 
         theDir = self.getRunPath(runNum) 
