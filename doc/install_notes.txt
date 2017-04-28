@@ -1,5 +1,6 @@
 
-=============================== VXI-11 ===============================
+=========== VXI-11
+
 [newg2@g2field-fe2 python-vxi11]$ sudo python setup.py install
 
 We trust you have received the usual lecture from the local System
@@ -58,16 +59,31 @@ Installed /usr/lib/python2.6/site-packages/python_vxi11-0.9-py2.6.egg
 Processing dependencies for python-vxi11==0.9
 Finished processing dependencies for python-vxi11==0.9
 
-================================ SIP =================================
-make[1]: Entering directory `/home/newg2/Applications/PSFeedback/lib/sip-4.19.2/sipgen'
-cp -f sip /usr/local/opt/pyenv/bin/sip
-make[1]: Leaving directory `/home/newg2/Applications/PSFeedback/lib/sip-4.19.2/sipgen'
-make[1]: Entering directory `/home/newg2/Applications/PSFeedback/lib/sip-4.19.2/siplib'
-cp -f sip.so /home/newg2/Applications/PSFeedback/lib/my-sip/sip.so
-strip /home/newg2/Applications/PSFeedback/lib/my-sip/sip.so
-cp -f /home/newg2/Applications/PSFeedback/lib/sip-4.19.2/siplib/sip.h /usr/local/opt/pyenv/include/python2.6/sip.h
-cp -f /home/newg2/Applications/PSFeedback/lib/sip-4.19.2/sip.pyi /home/newg2/Applications/PSFeedback/lib/my-sip/sip.pyi
-make[1]: Leaving directory `/home/newg2/Applications/PSFeedback/lib/sip-4.19.2/siplib'
-cp -f sipconfig.py /home/newg2/Applications/PSFeedback/lib/my-sip/sipconfig.py
-cp -f /home/newg2/Applications/PSFeedback/lib/sip-4.19.2/sipdistutils.py /home/newg2/Applications/PSFeedback/lib/my-sip/sipdistutils.py
+=========== SIP
 
+1. go into python environment (pyenv) 
+2. go into sip download dir; python configure.py
+3. make
+4. make install
+
+=========== PyQt4 
+
+1. Go into python environment (pyenv) 
+2. Configure: 
+   python2.7 configure-ng.py --destdir /usr/local/opt/pyenv/lib/python2.7/site-packages \
+   --sip-incdir /usr/local/opt/pyenv/include/python2.6/ --sip /usr/local/opt/pyenv/bin/sip \
+   --sipdir /usr/local/opt/pyenv/share --qmake /usr/bin/qmake-qt4 --static
+
+3. make
+   - it will fail when it gets to the line about 
+     QtGuiQAbstractPrintDialog.  Edit the file 
+     ~/QtGui/sipQtGuiQAbstractPrintDialog.cpp, and comment 
+     out that line mentioning the PrintCurrentPage thing.  
+     Try make again. 
+4. sudo make install 
+
+=========== pyqtgraph 
+
+1. Go into python environment (pyenv)
+2. python2.7 setup.py install 
+ 

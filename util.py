@@ -155,20 +155,19 @@ class FileManager:
         self.dataDir = ""
         self.isDebug = False
         self.fileEXT = "dat"
-      
-    def appendToFile(self,runNum,fn,utc_time,val):
-        rc = 0 
-        theDir = self.getRunPath(runNum) 
-        outpath = '%s/%s.%s' %(theDir,fn,self.fileEXT)
-        # check if the directory exists before writing to file 
-        if (os.path.isdir(theDir)==True ): 
-           myFile = open(outpath,'a')
-           myFile.write("%d,%.6f\n" %(utc_time,val) )
-           myFile.close()
+
+    def writeParameters(self,startRun,simMode,setpoint,P,I,D):
+        theDir  = './input'
+        outpath = '%s/parameters.csv' %(theDir)
+        if (os.path.isdir(theDir)==True ):
+            myFile = open(outpath,'w')
+            myFile.write( "%d,%d,%.3f,%.3f,%.3f,%.3f" %(startRun,simMode,setpoint,P,I,D) )
+            myFile.close()
+            rc = 0
         else:
-           if self.isDebug==True: print("[FileManager]: Cannot access the directory %s. " %(theDir) ) 
-           rc = 1 
-        return rc 
+            print("[FileManager]: Cannot access the directory %s. " %(theDir) )
+            rc = 1
+        return rc
 
     def writeYokogawaEvent(self,runNum,tag,event): 
         rc = 0 
@@ -189,61 +188,6 @@ class FileManager:
       
     def writeROOTFile(self,runNum,tag,event): 
         print("Writing ROOT file")
-
-        # gROOT.ProcessLine(
-        # "struct yokogawa_event{\
-        #   Int_t  ftimestamp;\
-        #   Int_t  fis_manual;\
-        #   Int_t  foutput_enabled;\
-        #   Double_t fcurrent;\ 
-        #   Double_t fp_fdbk;\
-        #   Double_t fi_fdbk;\
-        #   Double_t fd_fdbk;\
-        #   Double_t fsetpoint;\
-        #  };")
-
-
-        # from ROOT import yokogawa_event 
-        # yoko_event = yokogawa_event() 
-
-        # event_num = event.ID
-
-        # fileName   = "./data/%s_run-%05d.root" %(tag,runNum)
-        # treeName   = "T" 
-        # branchName = "yoko"
-        # leafStructure = "timestamp/I:is_manual/I:output_enabled/I:current/D:p_fdbk/D:i_fdbk/D:d_fdbk/D:setpoint/D"
-
-        # # update the value of the data structure 
-        # yoko_event.timestamp      = int( event.timestamp )
-        # yoko_event.is_manual      = int( event.is_manual )
-        # yoko_event.output_enabled = int( event.output_enabled )
-        # yoko_event.current        = float( event.current )
-        # yoko_event.p_fdbk         = float( event.p_fdbk )
-        # yoko_event.i_fdbk         = float( event.i_fdbk )
-        # yoko_event.d_fdbk         = float( event.d_fdbk )
-        # yoko_event.setpoint       = float( event.setpoint )  
-
-        # if event_num==1:
-        #     # make a new file  
-        #     myFile = TFile(fileName,"recreate")
-        #     myTree = TTree(treeName,treeName) 
-        #     myTree.Branch(branchName,yoko_event,leafStructure)
-        # else: 
-        #     # appending to file   
-        #     myFile = TFile(fileName,"read") 
-        #     myTree = myFile.Get(treeName)
-        #     myTree.SetBranchAddress("timestamp"     ,AddressOf(yoko_event,"timestamp")      ) 
-        #     myTree.SetBranchAddress("is_manual"     ,AddressOf(yoko_event,"is_manual")      ) 
-        #     myTree.SetBranchAddress("output_enabled",AddressOf(yoko_event,"output_enabled") ) 
-        #     myTree.SetBranchAddress("current"       ,AddressOf(yoko_event,"current")        ) 
-        #     myTree.SetBranchAddress("p_fdbk"        ,AddressOf(yoko_event,"p_fdbk")         ) 
-        #     myTree.SetBranchAddress("i_fdbk"        ,AddressOf(yoko_event,"i_fdbk")         ) 
-        #     myTree.SetBranchAddress("d_fdbk"        ,AddressOf(yoko_event,"d_fdbk")         ) 
-        #     myTree.SetBranchAddress("setpoint"      ,AddressOf(yoko_event,"setpoint")       ) 
-
-        # myTree.Fill()
-        # myFile.Write()
-        # myFile.Close() 
  
     def writeSummaryFile(self,runNum,fn,msg):
         rc = 0 
@@ -254,46 +198,6 @@ class FileManager:
            myFile = open(outpath,'w')
            for entry in msg: 
                myFile.write("%s\n" %(entry) )
-           myFile.close()
-        else:
-           if self.isDebug==True: print("[FileManager]: Cannot access the directory %s. " %(theDir) ) 
-           rc = 1 
-        return rc 
-
-    def writeSetPointHistoryFile(self,runNum,fn,ts,sp):
-        rc = 0 
-        theDir = self.getRunPath(runNum) 
-        outpath = '%s/%s.%s' %(theDir,fn,self.fileEXT)
-        # check if the directory exists before writing to file 
-        if (os.path.isdir(theDir)==True ): 
-           myFile = open(outpath,'w')
-           N = len(ts)
-           if N==0: 
-               # if no setpoints, write one line of zeros 
-               myFile.write("%d,%.6lf\n" %(0,0) ) 
-           else: 
-               for i in range(0,N): 
-                   myFile.write("%d,%.6lf\n" %(ts[i],sp[i]) )
-           myFile.close()
-        else:
-           if self.isDebug==True: print("[FileManager]: Cannot access the directory %s. " %(theDir) ) 
-           rc = 1 
-        return rc 
-
-    def writePIDHistoryFile(self,runNum,fn,tList,pList,iList,dList):
-        rc = 0 
-        theDir = self.getRunPath(runNum) 
-        outpath = '%s/%s.%s' %(theDir,fn,self.fileEXT)
-        # check if the directory exists before writing to file 
-        if (os.path.isdir(theDir)==True ): 
-           myFile = open(outpath,'w')
-           N = len(tList)
-           if N==0: 
-               # if no setpoints, write one line of zeros 
-               myFile.write("%d,%.6lf,%.6lf,%.6lf\n" %(0,0,0,0) ) 
-           else: 
-               for i in range(0,N): 
-                   myFile.write("%d,%.6lf,%.6lf,%.6lf\n" %(tList[i],pList[i],iList[i],dList[i]) )
            myFile.close()
         else:
            if self.isDebug==True: print("[FileManager]: Cannot access the directory %s. " %(theDir) ) 
