@@ -86,9 +86,9 @@ class FileManager:
         self.isDebug = False
         self.fileEXT = "dat"
 
-    def readParameters(self):
+    def readFPData(self):
         theDir  = './input'
-        inpath = '%s/parameters.csv' %(theDir)
+        inpath = '%s/fixed-probe-data.%s' %(theDir,self.fileEXT)
         myList  = [] 
         if (os.path.isdir(theDir)==True ):
             with open(inpath,'rb') as f:
@@ -99,6 +99,33 @@ class FileManager:
         else:
             print("[FileManager]: Cannot access the directory %s. " %(theDir) )
         return myList 
+
+    def readParameters(self):
+        theDir  = './input'
+        inpath = '%s/parameters.%s' %(theDir,self.fileEXT)
+        myList  = [] 
+        if (os.path.isdir(theDir)==True ):
+            with open(inpath,'rb') as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    myList = row 
+                f.close()
+        else:
+            print("[FileManager]: Cannot access the directory %s. " %(theDir) )
+        return myList 
+
+    def writeFPData(self,field_avg,field_avg_ppm):
+        theDir  = './input'
+        outpath = '%s/fixed-probe-data.%s' %(theDir,self.fileEXT)
+        if (os.path.isdir(theDir)==True ):
+            myFile = open(outpath,'w')
+            myFile.write( "%.3f,%.3f" %(field_avg,field_avg_ppm) )
+            myFile.close()
+            rc = 0
+        else:
+            print("[FileManager]: Cannot access the directory %s. " %(theDir) )
+            rc = 1
+        return rc
 
     def writeParameters(self,killStatus,daqStatus,simMode,manMode,setpoint,P,I,D):
         theDir  = './input'

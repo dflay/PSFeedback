@@ -48,7 +48,7 @@ def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
         statusMgr.isSimMode = True
     else 
         statusMgr.isSimMode = False
-    if manMode==1:
+    if manMode==0:
         statusMgr.manualMode = True  
         statusMgr.autoMode   = False 
     else:  
