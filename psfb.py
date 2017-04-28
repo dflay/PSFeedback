@@ -4,10 +4,8 @@
 # - Will run indefinitely until a kill signal is sent via the psfb_set_pars program     
 
 # FIXME:
-# 1. Automatic run start/stop: make a run a certain length of time, change run numbers automatically 
-# 2. Turn readParameters and subsequent setting of various data objects into a function? 
-# 3. System should be IDLE unless a run is triggered 
-# 4. Finish ROOT file output implementation 
+# 1. Finish ROOT file output implementation 
+# 2. Implement a kill signal to exit this program safely 
 
 import sys 
 import time 
@@ -15,46 +13,65 @@ from instrument import yokogawa
 from timeit     import default_timer as timer
 from data_structures import * 
 from pid import PID 
-# start a timer 
-t_start = timer()
 
 # global variables 
 gLOWER_LIMIT  = -200 # in mA 
 gUPPER_LIMIT  =  200 # in mA 
 gPrevLvl      = 0    # in mA 
 gReadoutDelay = 0.5  # in seconds 
-
+ip_addr       = "192.168.5.160" 
+gRunTime      = 100  # in seconds   
 
 #_______________________________________________________________________________
-def startRun(statusMgr,runMgr,yoko):
-    if statusMgr.isSimMode==True:
-        if runMgr.isRunning==False:
-            # get the run number, set to active status 
-            runMgr.updateRunNumber()
-            runMgr.isRunning = True
-            # update the setpoint (get a timestamp on the current setpoint, even if zero)  
-            statusMgr.updateSetPoint(statusMgr.currentSetPoint)
-    else:
-        if runMgr.isRunning==False:
-            # check for connectivity 
-            if statusMgr.isConnected==True:
-                # get the run number, set to active status 
-                runMgr.updateRunNumber()
-                runMgr.isRunning = True
-                # update the setpoint (get a timestamp on the current setpoint, even if zero)  
-                statusMgr.updateSetPoint(self.statusMgr.currentSetPoint)
-                # enable the output on the yokogawa 
-                yoko.enable_output()                 
+def getParameters(statusMgr,runMgr,fileMgr,pidLoop): 
+    # read from parameter file 
+    parList   = fileMgr.readParameters() 
+    daqStatus = int(parList[0])  # 0 = inactive, 1 = active  
+    simMode   = int(parList[1])
+    manMode   = int(parList[2])
+    setpoint  = float(parList[3])
+    P         = float(parList[4])
+    I         = float(parList[5])
+    D         = float(parList[6]) 
+    # update status manager  
+    statusMgr.updateSetPoint(setpoint)
+    statusMgr.updatePID(P,I,D)
+    if daqStatus==1: 
+        statusMgr.isActive  = True
+    else: 
+        statusMgr.isActive  = False 
+    if simMode==1: 
+        statusMgr.isSimMode = True
+    else 
+        statusMgr.isSimMode = False
+    if manMode==1:
+        statusMgr.manualMode = True  
+        statusMgr.autoMode   = False 
+    else:  
+        statusMgr.manualMode = False  
+        statusMgr.autoMode   = True
+    # update PID loop  
+    pidLoop.setKp(statusMgr.currentP) 
+    pidLoop.setKi(statusMgr.currentI) 
+    pidLoop.setKd(statusMgr.currentD) 
+    pidLoop.SetPoint = statusMgr.currentSetPoint 
 
-    def stopRun(statusMgr,runMgr,yoko):
-        if runMgr.isRunning==True:
-           # disable the output on the yokogawa
-           if statusMgr.isSimMode==False:
-               yoko.disable_output()
-           # run is no longer active 
-           runMgr.isRunning = False
+    def enableDAQ(statusMgr,yoko):
+        if statusMgr.isSimMode==False:
+            yoko.open_vxi_connection(statusMgr.ipAddr)
+            rc = yoko.open_vxi_connection(ip_addr)
+            print(yoko.status_msg)
+            if rc==1:
+                sys.exit()
+            else: 
+                # set up device for reading 
+                yoko.set_to_current_mode() 
+                yoko.set_range_max() 
+                yoko.set_level(0.) 
+                yoko.enable_output() 
+                statusMgr.isConnected = True
 
-    def killDAQ(statusMgr,runMgr,yoko):
+    def disableDAQ(statusMgr,yoko):
         if statusMgr.isSimMode==False:
             if statusMgr.isConnected==True:
                 # set the yokogawa level to zero 
@@ -64,6 +81,14 @@ def startRun(statusMgr,runMgr,yoko):
                 # close the connection  
                 yoko.close_vxi_connection()
                 statusMgr.isConnected = False
+
+    def get_data(pidLoop):
+        # this is where we would get some value from the fixed probes
+        # for now, use a random number generator  
+        val = get_random(gLOWER_LIMIT,gUPPER_LIMIT)
+        pidLoop.update(val)       # how does the fixed probe readout compare to the setpoint?    
+        return pidLoop.output
+
     # generate the data 
     def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko):
         global gPrevLvl,gReadoutDelay,gLOWER_LIMIT,gUPPER_LIMIT 
@@ -73,7 +98,7 @@ def startRun(statusMgr,runMgr,yoko):
         if statusMgr.manualMode==1:
            y = statusMgr.currentSetPoint
         else:
-           y = get_data()
+           y = get_data(pidLoop)
         # check the level 
         if y>gLOWER_LIMIT and y<gUPPER_LIMIT:
            # looks good, do nothing 
@@ -119,6 +144,7 @@ fileMgr   = FileManager()
 statusMgr = StatusManager()
 runMgr    = RunManager()
 pidLoop   = PID() 
+yoko      = yokogawa()
 
 dataDIR   = './data'
 fileEXT   = 'csv'
@@ -136,72 +162,47 @@ pidLoop.setSampleTime(0.01)
 isRunning_prev = False 
 parList = [] 
 
-# get instance of yokogawa object  
-yoko    = yokogawa()
-# open the VXI-connection  
-ip_addr = "192.168.5.160"  
-rc = yoko.open_vxi_connection(ip_addr)
-print(yoko.status_msg)
-if rc==1:
-    sys.exit()
-else: 
-    # set up device for reading 
-    yoko.set_to_current_mode() 
-    yoko.set_range_max() 
-    yoko.set_level(0.) 
-    yoko.enable_output() 
+# get all the parameters 
+getParameters(statusMgr,runMgr,fileMgr,pidLoop) 
+
+if statusMgr.isSimMode==False:
+    enableDAQ(statusMgr,yoko)  
+
+# start a timer 
+t_start = timer()
+t_prev  = t_start 
  
 # now start an infinite loop
 while(1):
-    # read from parameter file 
-    parList       = fileMgr.readParameters() 
-    runStatus     = int(parList[0])
-    simMode       = int(parList[1])
-    manMode       = int(parList[2])
-    stop          = int(parList[3]) 
-    setpoint      = float(parList[4])
-    P             = float(parList[5])
-    I             = float(parList[6])
-    D             = float(parList[7]) 
-    # update status manager  
-    statusMgr.updateSetPoint(setpoint)
-    statusMgr.updatePID(P,I,D)
-    pidLoop.setKp(statusMgr.currentP) 
-    pidLoop.setKi(statusMgr.currentI) 
-    pidLoop.setKd(statusMgr.currentD) 
-    if simMode==1: 
-        statusMgr.isSimMode = True
-    else 
-        statusMgr.isSimMode = False
-    if manMode==1:
-        statusMgr.manualMode = True  
-        statusMgr.autoMode   = False 
-    else:  
-        statusMgr.manualMode = False  
-        statusMgr.autoMode   = True
-    # update run manager
-    if runStatus==1: 
-        runMgr.isRunning = True
-    else:   
-        runMgr.isRunning = False 
-    # check run status 
-    if runMgr.isRunning==False and isRunning_prev==True: 
-       stopRun(statusMgr,runMgr,yoko) 
-    elif runMgr.isRunning==True and isRunning_prev==False:
-       # start a run 
-       startRun(statusMgr,runMgr,yoko)
-    elif stop==1:  
-       killDAQ(statusMgr,runMgr,yoko)
-       break  # leave the infinite loop  
-    else: 
-       # run is still going, read out the event 
-       readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko)
+    # update the parameters 
+    getParameters(statusMgr,runMgr,fileMgr,pidLoop) 
+    # check DAQ status 
+    # Did we get a kill signal? 
+    if statusMgr.killDAQ==True: 
+        disableDAQ(statusMgr,yoko)
+        break  
+    if statusMgr.isActive==True:
+        # DAQ is active; are we connected?  
+        if statusMgr.isConnected==False: 
+            enableDAQ(statusMgr,yoko)     
+        if statusMgr.isConnected==True: 
+            # we're connected, check elapsed time 
+            t_current = timer()
+            dt = t_current - t_prev 
+            if dt>=gRunTime: 
+               # run is finished, change run numbers
+               runMgr.updateRunNumber() 
+            # read out the event 
+            readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko)
+    else:
+        # disable the DAQ 
+        disableDAQ(statusMgr,yoko)
     # setup for next iteration  
-    isRunning_prev = runMgr.isRunning 
+    t_prev = t_current  
         
 # stop the timer 
 t_stop = timer() 
 dt     = t_stop - t_start
-print("elapsed time: {0:.4f}".format(dt))
-
+print("[PSFeedback]: Elapsed time: {0:.4f}".format(dt))
+print("[PSFeedback]: System disabled and no longer taking data.")
 

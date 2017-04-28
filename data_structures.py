@@ -64,6 +64,7 @@ class StatusManager:
         self.ipAddr           = ""
         self.currentSetPoint  = 0
         self.isSimMode        = False
+        self.isActive         = False 
         # PID values 
         self.currentP         = 0 
         self.currentI         = 0 
