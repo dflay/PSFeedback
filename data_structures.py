@@ -1,6 +1,7 @@
 import os.path
 import sys
 import csv
+import ROOT 
 
 #_______________________________________________________________________________
 # a class to keep track of the yokogawa data for a given readout event 
@@ -112,7 +113,13 @@ class FileManager:
             rc = 1
         return rc
 
-    def writeYokogawaEvent(self,runNum,tag,event):
+    def writeYokogawaEvent(self,writeROOT,runNum,tag,event):
+        rc = self.writeCSV(runNum,tag,event)
+        if writeROOT==True: 
+            rc = self.writeROOTFile(runNum,tag,event) 
+        return rc 
+
+    def writeCSV(self,runNum,tag,event):
         rc = 0
         theDir  = './data'
         fn      = '%s_run-%05d.%s' %(tag,runNum,self.fileEXT)

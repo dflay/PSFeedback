@@ -15,24 +15,28 @@ from data_structures import *
 from pid import PID 
 
 # global variables 
-gLOWER_LIMIT  = -200 # in mA 
-gUPPER_LIMIT  =  200 # in mA 
-gPrevLvl      = 0    # in mA 
-gReadoutDelay = 0.5  # in seconds 
-ip_addr       = "192.168.5.160" 
-gRunTime      = 100  # in seconds   
+gLOWER_LIMIT     = -200           # in mA 
+gUPPER_LIMIT     =  200           # in mA 
+gPrevLvl         = 0              # in mA 
+gReadoutDelay    = 0.5            # in seconds 
+gRunTime         = 100            # in seconds 
+gCONV_mA_TO_AMPS = 1E-3           # 1 mA = 10^-3 A  
+gWriteROOT       = False          # write ROOT file   
+gDataFN          = "ps-feedback"  # output file name
+ip_addr          = "192.168.5.160" 
 
 #_______________________________________________________________________________
 def getParameters(statusMgr,runMgr,fileMgr,pidLoop): 
     # read from parameter file 
     parList   = fileMgr.readParameters() 
     daqStatus = int(parList[0])  # 0 = inactive, 1 = active  
-    simMode   = int(parList[1])
-    manMode   = int(parList[2])
-    setpoint  = float(parList[3])
-    P         = float(parList[4])
-    I         = float(parList[5])
-    D         = float(parList[6]) 
+    killDAQ   = int(parList[1])
+    simMode   = int(parList[2])
+    manMode   = int(parList[3])
+    setpoint  = float(parList[4])
+    P         = float(parList[5])
+    I         = float(parList[6])
+    D         = float(parList[7]) 
     # update status manager  
     statusMgr.updateSetPoint(setpoint)
     statusMgr.updatePID(P,I,D)
@@ -50,6 +54,10 @@ def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
     else:  
         statusMgr.manualMode = False  
         statusMgr.autoMode   = True
+    if killDAQ==1: 
+        statusMgr.killDAQ    = True 
+    else: 
+        statusMgr.killDAQ    = False 
     # update PID loop  
     pidLoop.setKp(statusMgr.currentP) 
     pidLoop.setKi(statusMgr.currentI) 
@@ -83,6 +91,7 @@ def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
                 statusMgr.isConnected = False
 
     def get_data(pidLoop):
+        global gLOWER_LIMIT,gUPPER_LIMIT 
         # this is where we would get some value from the fixed probes
         # for now, use a random number generator  
         val = get_random(gLOWER_LIMIT,gUPPER_LIMIT)
@@ -91,8 +100,7 @@ def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
 
     # generate the data 
     def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko):
-        global gPrevLvl,gReadoutDelay,gLOWER_LIMIT,gUPPER_LIMIT 
-        dataFN     = "ps-feedback"
+        global gPrevLvl,gReadoutDelay,gLOWER_LIMIT,gUPPER_LIMIT,gWriteROOT,gDataFN,gCONV_mA_TO_AMPS 
         yoko_event = YokogawaEvent() 
         x = now_timestamp()
         if statusMgr.manualMode==1:
@@ -104,7 +112,6 @@ def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
            # looks good, do nothing 
            y = y
         else:
-           msg = "System: Invalid level of %.3f attempted!  Setting to 80 percent of maximum." %(y)
            if y>0: y = 0.8*gUPPER_LIMIT
            if y<0: y = 0.8*gLOWER_LIMIT
         # now program the yokogawa 
@@ -113,8 +120,8 @@ def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
                 yoko.set_level(y)                    # FIXME: relatively certain that we set the current in mA  
             # wait a bit 
             time.sleep(gReadoutDelay)
-            my_lvl   = float( self.yoko.get_level() )
-            lvl      = my_lvl/self.CONV_mA_TO_AMPS   # the readout is in Amps; convert to mA   
+            my_lvl   = float( yoko.get_level() )
+            lvl      = my_lvl/gCONV_mA_TO_AMPS   # the readout is in Amps; convert to mA   
         else:
             # test mode; use the random data  
             lvl = y
@@ -132,8 +139,7 @@ def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
         yoko_event.i_fdbk             = pidLoop.Ki
         yoko_event.d_fdbk             = pidLoop.Kd
         # now write to file 
-        rc = fileMgr.writeYokogawaEvent(runMgr.runNum,dataFN,yoko_event)
-        # rc = fileMgr.writeROOTFile(runMgr.runNum,dataFN,yoko_event)
+        rc = fileMgr.writeYokogawaEvent(gWriteROOT,runMgr.runNum,gDataFN,yoko_event)
         if rc==1:
             print("System: Cannot write data to file for run %d" %(runMgr.runNum) )
         # save the level as the previous one 
