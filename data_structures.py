@@ -27,6 +27,7 @@ class RunManager:
         self.startTime = 0 # UTC  
         self.endTime   = 0 # UTC 
         self.dataDir   = ""
+        self.tag       = ""
         self.isRunning = False
         self.isDebug   = False
 
@@ -45,7 +46,7 @@ class RunManager:
                 fn   = os.path.splitext( os.path.basename(entry) )[0] # take the zeroth entry of the split function  
                 # print(fn) 
                 # arg = int(entry.strip('run-') )
-                arg = int(fn.strip('ps-feedback_run-') )
+                arg = int( fn.strip(self.tag) )
                 if arg>=lastRun: lastRun = arg
         else:
             lastRun = 0

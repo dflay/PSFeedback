@@ -61,13 +61,13 @@ iMode      = int(args.mode)
 iDAQStatus = int(args.status)
 iKill      = int(args.kill)
 # update values if necessary
-if iKill>=0:     killStatus  = iKill      
-if iDAQStatus>0: daqStatus   = iDAQStatus
-if iSimMode>0:   simMode     = iSimMode
-if iMode>=0:     mode        = iMode
-if iP>=0:        P           = iP 
-if iI>=0:        I           = iI 
-if iD>=0:        D           = iD 
+if iKill>=0:      killStatus  = iKill      
+if iDAQStatus>=0: daqStatus   = iDAQStatus
+if iSimMode>=0:   simMode     = iSimMode
+if iMode>=0:      mode        = iMode
+if iP>=0:         P           = iP 
+if iI>=0:         I           = iI 
+if iD>=0:         D           = iD 
 if iSetpoint!=-300: setpoint = iSetpoint
 # use only one flag, not both (that won't make sense!) 
 if iFPAvg>=0 and iFPAvgPPM<0: 

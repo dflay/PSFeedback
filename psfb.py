@@ -6,12 +6,13 @@
 # FIXME:
 # 1. Finish ROOT file output implementation 
 # 2. How to integrate the fixed probe input? 
+# 3. Get code to start a new data file when re-starting data taking (when toggling status switch) 
 
-import sys 
 import time 
 from instrument      import yokogawa 
 from timeit          import default_timer as timer
 from data_structures import * 
+from util            import *
 from pid             import PID 
 
 # global variables 
@@ -19,16 +20,19 @@ gLOWER_LIMIT     = -200           # in mA
 gUPPER_LIMIT     =  200           # in mA 
 gPrevLvl         = 0              # in mA 
 gReadoutDelay    = 0.5            # in seconds 
-gRunTime         = 100            # in seconds 
+gRunTime         = 60.*5          # in seconds 
 gCONV_mA_TO_AMPS = 1E-3           # 1 mA = 10^-3 A  
 gWriteROOT       = False          # write ROOT file   
 gDataFN          = "ps-feedback"  # output file name
 ip_addr          = "192.168.5.160" 
+gIsDebug         = True 
 
 #_______________________________________________________________________________
-def getParameters(statusMgr,runMgr,fileMgr,pidLoop): 
+def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
+    global gIsDebug 
     # read from parameter file 
-    parList   = fileMgr.readParameters() 
+    parList   = fileMgr.readParameters()
+    if gIsDebug==True: print("[getParameters]: Obtained %d parameters" %( len(parList) ) ) 
     killDAQ   = int(parList[0])  # 0 = alive,    1 = kill 
     daqStatus = int(parList[1])  # 0 = inactive, 1 = active  
     simMode   = int(parList[2])
@@ -46,7 +50,7 @@ def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
         statusMgr.isActive  = False 
     if simMode==1: 
         statusMgr.isSimMode = True
-    else 
+    else:  
         statusMgr.isSimMode = False
     if manMode==0:
         statusMgr.manualMode = True  
@@ -63,84 +67,94 @@ def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
     pidLoop.setKi(statusMgr.currentI) 
     pidLoop.setKd(statusMgr.currentD) 
     pidLoop.SetPoint = statusMgr.currentSetPoint 
+    if gIsDebug==True: print("[getParameters]: Parameters read from file")
 
-    def enableDAQ(statusMgr,yoko):
-        if statusMgr.isSimMode==False:
-            rc = yoko.open_vxi_connection(statusMgr.ipAddr)
-            print(yoko.status_msg)
-            if rc==1:
-                sys.exit()
-            else: 
-                # set up device for reading 
-                yoko.set_to_current_mode() 
-                yoko.set_range_max() 
-                yoko.set_level(0.) 
-                yoko.enable_output() 
-                statusMgr.isConnected = True
-
-    def disableDAQ(statusMgr,yoko):
-        if statusMgr.isSimMode==False:
-            if statusMgr.isConnected==True:
-                # set the yokogawa level to zero, disable, and disconnect 
-                yoko.set_level(0.)
-                yoko.disable_output()
-                yoko.close_vxi_connection()
-                statusMgr.isConnected = False
-
-    def get_data(pidLoop):
-        global gLOWER_LIMIT,gUPPER_LIMIT 
-        # this is where we would get some value from the fixed probes
-        # for now, use a random number generator  
-        val = get_random(gLOWER_LIMIT,gUPPER_LIMIT)
-        pidLoop.update(val)       # how does the fixed probe readout compare to the setpoint?    
-        return pidLoop.output
-
-    # generate the data 
-    def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko):
-        global gPrevLvl,gReadoutDelay,gLOWER_LIMIT,gUPPER_LIMIT,gWriteROOT,gDataFN,gCONV_mA_TO_AMPS 
-        yoko_event = YokogawaEvent() 
-        x = now_timestamp()
-        if statusMgr.manualMode==1:
-           y = statusMgr.currentSetPoint
-        else:
-           y = get_data(pidLoop)
-        # check the level 
-        if y>gLOWER_LIMIT and y<gUPPER_LIMIT:
-           # looks good, do nothing 
-           y = y
-        else:
-           if y>0: y = 0.8*gUPPER_LIMIT
-           if y<0: y = 0.8*gLOWER_LIMIT
-        # now program the yokogawa 
-        if statusMgr.isSimMode==False:
-            if gPrevLvl!=y:                          # check to see if the yokogawa level changed 
-                yoko.set_level(y)                    # FIXME: relatively certain that we set the current in mA  
-            # wait a bit 
-            time.sleep(gReadoutDelay)
-            my_lvl   = float( yoko.get_level() )
-            lvl      = my_lvl/gCONV_mA_TO_AMPS   # the readout is in Amps; convert to mA   
-        else:
-            # test mode; use the random data  
-            lvl = y
-        # save the data to the event object 
-        yoko_event.ID             = yoko_event.ID + 1
-        yoko_event.timestamp      = x
-        yoko_event.current        = lvl
-        yoko_event.setpoint       = statusMgr.currentSetPoint
-        yoko_event.is_manual      = statusMgr.manualMode
-        if statusMgr.isSimMode==False:
-            yoko_event.output_enabled = int( yoko.get_output_state() )
-        else:
-            yoko_event.output_enabled = 0
-        yoko_event.p_fdbk             = pidLoop.Kp
-        yoko_event.i_fdbk             = pidLoop.Ki
-        yoko_event.d_fdbk             = pidLoop.Kd
-        # now write to file 
-        rc = fileMgr.writeYokogawaEvent(gWriteROOT,runMgr.runNum,gDataFN,yoko_event)
+def enableDAQ(statusMgr,runMgr,yoko):
+    if statusMgr.isSimMode==False:
+        rc = yoko.open_vxi_connection(statusMgr.ipAddr)
+        print(yoko.status_msg)
         if rc==1:
-            print("System: Cannot write data to file for run %d" %(runMgr.runNum) )
-        # save the level as the previous one 
-        gPrevLvl = lvl
+            sys.exit()
+        else: 
+            # set up device for reading 
+            yoko.set_to_current_mode() 
+            yoko.set_range_max() 
+            yoko.set_level(0.) 
+            yoko.enable_output() 
+            statusMgr.isConnected = True
+    runMgr.updateRunNumber()  # update the run number 
+    if gIsDebug==True: print("[enableDAQ]: DAQ enabled")
+
+def disableDAQ(statusMgr,yoko):
+    global gIsDebug
+    if statusMgr.isSimMode==False:
+        if statusMgr.isConnected==True:
+            # set the yokogawa level to zero, disable, and disconnect 
+            yoko.set_level(0.)
+            yoko.disable_output()
+            yoko.close_vxi_connection()
+            statusMgr.isConnected = False
+    if gIsDebug==True: print("[disableDAQ]: DAQ disabled")
+
+def get_data(pidLoop):
+    global gIsDebug,gLOWER_LIMIT,gUPPER_LIMIT 
+    if gIsDebug==True: print("[get_data]: getting data...")
+    # this is where we would get some value from the fixed probes
+    # for now, use a random number generator  
+    val = get_random(gLOWER_LIMIT,gUPPER_LIMIT)
+    pidLoop.update(val)       # how does the fixed probe readout compare to the setpoint?    
+    if gIsDebug==True: print("[enableDAQ]: done!")
+    return pidLoop.output
+
+# generate the data 
+def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko):
+    global gIsDebug,gPrevLvl,gReadoutDelay,gLOWER_LIMIT,gUPPER_LIMIT,gWriteROOT,gDataFN,gCONV_mA_TO_AMPS 
+    if gIsDebug==True: print("[readEvent]: Reading event...")
+    yoko_event = YokogawaEvent() 
+    x = now_timestamp()
+    if statusMgr.manualMode==1:
+       y = statusMgr.currentSetPoint
+    else:
+       y = get_data(pidLoop)
+    # check the level 
+    if y>gLOWER_LIMIT and y<gUPPER_LIMIT:
+       # looks good, do nothing 
+       y = y
+    else:
+       if y>0: y = 0.8*gUPPER_LIMIT
+       if y<0: y = 0.8*gLOWER_LIMIT
+    # now program the yokogawa 
+    if statusMgr.isSimMode==False:
+        if gPrevLvl!=y:                          # check to see if the yokogawa level changed 
+            yoko.set_level(y)                    # FIXME: relatively certain that we set the current in mA  
+        # wait a bit 
+        time.sleep(gReadoutDelay)
+        my_lvl   = float( yoko.get_level() )
+        lvl      = my_lvl/gCONV_mA_TO_AMPS   # the readout is in Amps; convert to mA   
+    else:
+        # test mode; use the random data  
+        time.sleep(gReadoutDelay)
+        lvl = y
+    # save the data to the event object 
+    yoko_event.ID             = yoko_event.ID + 1
+    yoko_event.timestamp      = x
+    yoko_event.current        = lvl
+    yoko_event.setpoint       = statusMgr.currentSetPoint
+    yoko_event.is_manual      = statusMgr.manualMode
+    if statusMgr.isSimMode==False:
+        yoko_event.output_enabled = int( yoko.get_output_state() )
+    else:
+        yoko_event.output_enabled = 0
+    yoko_event.p_fdbk             = pidLoop.Kp
+    yoko_event.i_fdbk             = pidLoop.Ki
+    yoko_event.d_fdbk             = pidLoop.Kd
+    # now write to file 
+    rc = fileMgr.writeYokogawaEvent(gWriteROOT,runMgr.runNum,gDataFN,yoko_event)
+    if rc==1:
+        print("System: Cannot write data to file for run %d" %(runMgr.runNum) )
+    # save the level as the previous one 
+    gPrevLvl = lvl
+    if gIsDebug==True: print("[readEvent]: Done!")
 #_______________________________________________________________________________
 
 fileMgr   = FileManager()
@@ -154,26 +168,25 @@ fileEXT   = 'csv'
 
 # initialization
 fileMgr.fileEXT = fileEXT  
-fileMgr.dataDIR = dataDIR 
-runMgr.dataDIR  = dataDIR
+fileMgr.dataDir = dataDIR 
+runMgr.dataDir  = dataDIR
+runMgr.tag      = "%s_run-" %(gDataFN)
 pidLoop         = PID()
 pidLoop.setKp(0.6)
 pidLoop.setKi(0.8)
 pidLoop.setKd(0.)
 pidLoop.setSampleTime(0.01)
 
-isRunning_prev = False 
 parList = [] 
 
 # get all the parameters 
 getParameters(statusMgr,runMgr,fileMgr,pidLoop) 
 statusMgr.ipAddr = ip_addr
 
-if statusMgr.isSimMode==False:
-    enableDAQ(statusMgr,yoko)  
+enableDAQ(statusMgr,runMgr,yoko)  
 
 # start a timer 
-t_start = timer()
+t_start = float( timer() )
 t_prev  = t_start 
  
 # now start an infinite loop
@@ -187,11 +200,11 @@ while(1):
         break  
     if statusMgr.isActive==True:
         # DAQ is active; are we connected?  
-        if statusMgr.isConnected==False: 
-            enableDAQ(statusMgr,yoko)     
+        if statusMgr.isConnected==False and statusMgr.isSimMode==False: 
+            enableDAQ(statusMgr,runMgr,yoko)     
         if statusMgr.isConnected==True: 
             # we're connected, check elapsed time 
-            t_current = timer()
+            t_current = float( timer() )
             dt = t_current - t_prev 
             if dt>=gRunTime: 
                # run is finished, change run numbers
@@ -199,9 +212,22 @@ while(1):
                t_prev = t_current  
             # read out the event 
             readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko)
+        # if in simulation mode, readout an event anyway 
+        if statusMgr.isSimMode==True: 
+            # we're connected, check elapsed time 
+            t_current = float( timer() )
+            dt = t_current - t_prev 
+            print(t_current,t_prev,dt,gRunTime)
+            if dt>=gRunTime: 
+               # run is finished, change run numbers
+               if gIsDebug==True: print("RUN FINISHED! dt = %.4f, run time limit =  %.4f" %(dt,gRunTime) )
+               runMgr.updateRunNumber()
+               t_prev = t_current  
+            readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko)
     else:
         # disable the DAQ 
         disableDAQ(statusMgr,yoko)
+    time.sleep(0.002)  
         
 # stop the timer 
 t_stop = timer() 
