@@ -100,12 +100,12 @@ class FileManager:
             print("[FileManager]: Cannot access the directory %s. " %(theDir) )
         return myList 
 
-    def writeParameters(self,startRun,simMode,setpoint,P,I,D):
+    def writeParameters(self,killStatus,daqStatus,simMode,manMode,setpoint,P,I,D):
         theDir  = './input'
         outpath = '%s/parameters.%s' %(theDir,self.fileEXT)
         if (os.path.isdir(theDir)==True ):
             myFile = open(outpath,'w')
-            myFile.write( "%d,%d,%.3f,%.3f,%.3f,%.3f" %(startRun,simMode,setpoint,P,I,D) )
+            myFile.write( "%d,%d,%d,%d,%.3f,%.3f,%.3f,%.3f" %(killStatus,daqStatus,simMode,manMode,setpoint,P,I,D) )
             myFile.close()
             rc = 0
         else:

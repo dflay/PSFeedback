@@ -5,14 +5,14 @@
 
 # FIXME:
 # 1. Finish ROOT file output implementation 
-# 2. Implement a kill signal to exit this program safely 
+# 2. How to integrate the fixed probe input? 
 
 import sys 
 import time 
-from instrument import yokogawa 
-from timeit     import default_timer as timer
+from instrument      import yokogawa 
+from timeit          import default_timer as timer
 from data_structures import * 
-from pid import PID 
+from pid             import PID 
 
 # global variables 
 gLOWER_LIMIT     = -200           # in mA 
@@ -29,8 +29,8 @@ ip_addr          = "192.168.5.160"
 def getParameters(statusMgr,runMgr,fileMgr,pidLoop): 
     # read from parameter file 
     parList   = fileMgr.readParameters() 
-    daqStatus = int(parList[0])  # 0 = inactive, 1 = active  
-    killDAQ   = int(parList[1])
+    killDAQ   = int(parList[0])  # 0 = alive,    1 = kill 
+    daqStatus = int(parList[1])  # 0 = inactive, 1 = active  
     simMode   = int(parList[2])
     manMode   = int(parList[3])
     setpoint  = float(parList[4])
@@ -66,8 +66,7 @@ def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
 
     def enableDAQ(statusMgr,yoko):
         if statusMgr.isSimMode==False:
-            yoko.open_vxi_connection(statusMgr.ipAddr)
-            rc = yoko.open_vxi_connection(ip_addr)
+            rc = yoko.open_vxi_connection(statusMgr.ipAddr)
             print(yoko.status_msg)
             if rc==1:
                 sys.exit()
@@ -82,11 +81,9 @@ def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
     def disableDAQ(statusMgr,yoko):
         if statusMgr.isSimMode==False:
             if statusMgr.isConnected==True:
-                # set the yokogawa level to zero 
+                # set the yokogawa level to zero, disable, and disconnect 
                 yoko.set_level(0.)
-                # disable the output 
                 yoko.disable_output()
-                # close the connection  
                 yoko.close_vxi_connection()
                 statusMgr.isConnected = False
 
@@ -170,6 +167,7 @@ parList = []
 
 # get all the parameters 
 getParameters(statusMgr,runMgr,fileMgr,pidLoop) 
+statusMgr.ipAddr = ip_addr
 
 if statusMgr.isSimMode==False:
     enableDAQ(statusMgr,yoko)  
@@ -197,14 +195,13 @@ while(1):
             dt = t_current - t_prev 
             if dt>=gRunTime: 
                # run is finished, change run numbers
-               runMgr.updateRunNumber() 
+               runMgr.updateRunNumber()
+               t_prev = t_current  
             # read out the event 
             readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko)
     else:
         # disable the DAQ 
         disableDAQ(statusMgr,yoko)
-    # setup for next iteration  
-    t_prev = t_current  
         
 # stop the timer 
 t_stop = timer() 
