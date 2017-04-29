@@ -25,8 +25,7 @@ Note: For the directions below, we may need to enter into the python environment
 
 ### VXI-11
 
-1. Run `sudo python setup.py install` from the python-vxi11 directory
-2. Modify `PYTHONPATH` in your bashrc to `export PYTHONPATH = /usr/lib/python2.6/site-packages/python_vxi11-0.9-py2.6.egg:$PYTHONPATH` 
+1. Run `python setup.py install` from the python-vxi11 directory
 
 ### numpy
 
@@ -39,7 +38,7 @@ Note: For the directions below, we may need to enter into the python environment
 2. Deactivate the UPS environment (comment out .upsrc in the .bashrc file)
 3. Logout, log back in to refresh the paths
 4. Run `scl enable python27 /bin/bash`
-2. Activate the python environment: 
+2. Activate the python environment 
 3. Run the configure script `python configure.py`; this will create the Makefile and associated tools
 4. Run `make`, then `sudo make install`.   
 
@@ -52,12 +51,24 @@ Tool for generating configure script for qmake-based projects (needed for PyQt)
 
 ### PyQt4 or PyQt5  
 
-1. Activate the python environment 
-2. Should grab PySide: `sudo yum install python-pyside.x86_64`
+1. Should grab PySide: `sudo yum install python-pyside.x86_64`
+2. Deactivate the UPS environment (comment out .upsrc in the .bashrc file)
+3. Logout, log back in to refresh the paths
+4. Run `scl enable python27 /bin/bash`
+5. Activate the python environment
+6. Configure: `python configure-ng.py  --qmake /home/newg2/pyenv27/bin/qmake-qt4 --static`
+7. `make`
+   - it will fail when it gets to the line about
+     QtGuiQAbstractPrintDialog.  Edit the file
+     ~/QtGui/sipQtGuiQAbstractPrintDialog.cpp, and comment
+     out that line mentioning the PrintCurrentPage thing.
+     Try make again.
+8. `sudo make install` 
 
 ### pyqtgraph
 
-1. Go to /lib/pyqtgraph-0.10.0
-2. Run the installation script `sudo python setup.py install` 
-3. Modify `PYTHONPATH` in your bashrc to `export PYTHONPATH = /usr/lib/python2.6/site-packages/:$PYTHONPATH` 
+1. Run `scl enable python27 /bin/bash`
+2. Activate the python environment
+3. Go to /lib/pyqtgraph-0.10.0
+4. Run the installation script `sudo python setup.py install` 
 
