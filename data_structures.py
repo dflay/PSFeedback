@@ -1,7 +1,24 @@
 import os.path
 import sys
 import csv
-import ROOT 
+from ROOT import gROOT, TTree, TFile, AddressOf 
+
+# data structure for ROOT
+# NOTE: We have to make all data members the same type for some odd reason... 
+gROOT.ProcessLine(
+"struct YokogawaEvent_t{\
+   Double_t fID;\
+   Double_t ftimestamp;\
+   Double_t fis_manual;\
+   Double_t foutput_enabled;\
+   Double_t fcurrent;\
+   Double_t fsetpoint;\
+   Double_t fP;\
+   Double_t fI;\
+   Double_t fD;\
+  };")
+
+from ROOT import YokogawaEvent_t
 
 #_______________________________________________________________________________
 # a class to keep track of the yokogawa data for a given readout event 
@@ -35,17 +52,14 @@ class RunManager:
         self.runNum = self.getRunNumber()
 
     def getRunNumber(self):
-        # dirs  = [d for d in os.listdir(self.dataDir) if os.path.isdir( os.path.join(self.dataDir,d) ) ] 
-        files = [f for f in os.listdir(self.dataDir) if os.path.isfile(os.path.join(self.dataDir,f) ) ]
+        theDir = "%s/csv" %(self.dataDir)  # look at the CSV directory 
+        files = [f for f in os.listdir(theDir) if os.path.isfile(os.path.join(theDir,f) ) ]
         N = len(files)
         runList = []
         lastRun = -300
         if N>0:
             for entry in files:
-                # path = '%s/%s' %(self.dataDir,entry) 
                 fn   = os.path.splitext( os.path.basename(entry) )[0] # take the zeroth entry of the split function  
-                # print(fn) 
-                # arg = int(entry.strip('run-') )
                 arg = int( fn.strip(self.tag) )
                 if arg>=lastRun: lastRun = arg
         else:
@@ -151,7 +165,7 @@ class FileManager:
         rc = 0
         theDir  = self.dataDir  
         fn      = '%s_run-%05d.%s' %(tag,runNum,self.fileEXT)
-        outpath = '%s/%s'      %(theDir,fn)
+        outpath = '%s/csv/%s'      %(theDir,fn)
         # check if the directory exists before writing to file 
         if (os.path.isdir(theDir)==True ):
            myFile = open(outpath,'a')
@@ -165,5 +179,34 @@ class FileManager:
         return rc
 
     def writeROOTFile(self,runNum,tag,event):
-        print("Writing ROOT file")
+        myEvent                 = YokogawaEvent_t()
+        myEvent.fID             = event.ID
+        myEvent.ftimestamp      = event.timestamp     
+        myEvent.fis_manual      = event.is_manual     
+        myEvent.foutput_enabled = event.output_enabled
+        myEvent.fcurrent        = event.current       
+        myEvent.fsetpoint       = event.setpoint      
+        myEvent.fP              = event.p_fdbk             
+        myEvent.fI              = event.i_fdbk             
+        myEvent.fD              = event.d_fdbk             
+
+        fn            = '%s_run-%05d.root' %(tag,runNum)
+        fileName      = "%s/ROOTfiles/%s"  %(self.dataDir,fn)
+        treeName      = "T"
+        branchName    = 'PSFB'
+        leafStructure = 'ID/D:timestamp/D:is_manual/D:output_enabled/D:current/D:setpoint/D:P/D:I/D:D/D'
+
+        if event.ID==1:
+            # make a new file  
+            myFile = TFile(fileName,"recreate")
+            myTree = TTree(treeName,treeName)
+            myTree.Branch(branchName,myEvent,leafStructure)
+        elif event.ID>1:
+            # appending to file   
+            myFile = TFile(fileName,"update")
+            myTree = gROOT.FindObject(treeName)
+            myTree.SetBranchAddress(branchName,AddressOf(myEvent,"fID") )
+        myTree.Fill()
+        myFile.WriteTObject(myTree)  # this apparently removes the multiple basket issue 
+        myFile.Close()
 

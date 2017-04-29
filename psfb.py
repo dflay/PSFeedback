@@ -24,12 +24,13 @@ gPrevTime        = 0              # in seconds
 gReadoutDelay    = 0.5            # in seconds 
 gRunTime         = 60.*1          # in seconds 
 gCONV_mA_TO_AMPS = 1E-3           # 1 mA = 10^-3 A  
+gEventNumber     = 0 
 gDataFN          = "ps-feedback"  # output file name
 ip_addr          = "192.168.5.160" 
-gDataDIR         = './data/csv'
+gDataDIR         = './data'
 gFileEXT         = 'csv'
 gIsDebug         = True
-gWriteROOT       = False          # write ROOT file   
+gWriteROOT       = True           # write ROOT file   
 
 #_______________________________________________________________________________
 def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
@@ -73,14 +74,20 @@ def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
     pidLoop.SetPoint = statusMgr.currentSetPoint 
     if gIsDebug==True: print("[getParameters]: Parameters read from file")
 
-def checkRunTime(current_time,runMgr):
-    global gRunTime,gPrevTime  
+def checkRunTime(runMgr):
+    global gRunTime,gPrevTime,gEventNumber 
+    rc = 0 # 0 = not ready, 1 = ready 
+    current_time = timer()  
     dt = current_time - gPrevTime 
     if dt>=gRunTime: 
-        if gIsDebug==True: print("[checkRunTime]: RUN FINISHED!  t_current = %.4f, t_prev = %.4f, diff = %.4f, run_max = %.4f" %(current_time,gPrevTime,dt,gRunTime) )
-        # run is finished, change run numbers
-        runMgr.updateRunNumber()
+        if gIsDebug==True: print("[checkRunTime]: RUN %d FINISHED!  t_current = %.4E, t_prev = %.4E, diff = %.4E, run_max = %.4E" \
+                           %(runMgr.runNum,current_time,gPrevTime,dt,gRunTime) )
+        # clear event number 
+        gEventNumber = 0 
+        if gIsDebug==True: print("[checkRunTime]: Starting run %d" %(runMgr.runNum+1) )
         gPrevTime = current_time  
+        rc = 1
+    return rc  
 
 def enableDAQ(statusMgr,runMgr,yoko):
     if statusMgr.isSimMode==False:
@@ -121,8 +128,9 @@ def get_data(pidLoop):
 
 # generate the data 
 def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko):
-    global gIsDebug,gPrevLvl,gReadoutDelay,gLOWER_LIMIT,gUPPER_LIMIT,gWriteROOT,gDataFN,gCONV_mA_TO_AMPS 
+    global gIsDebug,gEventNumber,gPrevLvl,gReadoutDelay,gLOWER_LIMIT,gUPPER_LIMIT,gWriteROOT,gDataFN,gCONV_mA_TO_AMPS 
     if gIsDebug==True: print("[readEvent]: Reading event...")
+    gEventNumber = gEventNumber + 1
     yoko_event = YokogawaEvent() 
     x = now_timestamp()
     if statusMgr.manualMode==1:
@@ -148,8 +156,8 @@ def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko):
         # test mode; use the random data  
         time.sleep(gReadoutDelay)
         lvl = y
-    # save the data to the event object 
-    yoko_event.ID             = yoko_event.ID + 1
+    # save the data to the event object
+    yoko_event.ID             = gEventNumber 
     yoko_event.timestamp      = x
     yoko_event.current        = lvl
     yoko_event.setpoint       = statusMgr.currentSetPoint
@@ -162,6 +170,7 @@ def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko):
     yoko_event.i_fdbk             = pidLoop.Ki
     yoko_event.d_fdbk             = pidLoop.Kd
     # now write to file 
+    if gIsDebug==True: print("[readEvent]: Event number = %d, current = %.4f" %(yoko_event.ID,yoko_event.current) ) 
     rc = fileMgr.writeYokogawaEvent(gWriteROOT,runMgr.runNum,gDataFN,yoko_event)
     if rc==1:
         print("System: Cannot write data to file for run %d" %(runMgr.runNum) )
@@ -194,8 +203,7 @@ statusMgr.ipAddr = ip_addr
 enableDAQ(statusMgr,runMgr,yoko)  
 
 # start a timer 
-t_start = float( timer() )
-t_prev  = t_start 
+t_start = timer()
  
 # now start an infinite loop
 while(1):
@@ -212,20 +220,21 @@ while(1):
             enableDAQ(statusMgr,runMgr,yoko)     
         if statusMgr.isConnected==True: 
             # we're connected, check elapsed time 
-            t_current = float( timer() )
-            checkRunTime(t_current,runMgr) 
+            rc = checkRunTime(runMgr) 
+            if rc==1: runMgr.updateRunNumber() 
             # read out the event 
             readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko)
         # if in simulation mode, readout an event anyway 
         if statusMgr.isSimMode==True: 
             # we're connected, check elapsed time 
-            t_current = float( timer() )
-            checkRunTime(t_current,runMgr) 
+            rc = checkRunTime(runMgr) 
+            if rc==1: runMgr.updateRunNumber() 
+            # read out the event 
             readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko)
     else:
         # disable the DAQ 
         disableDAQ(statusMgr,yoko)
-    time.sleep(0.002)  # need a buffer time so the code can catch up  
+    time.sleep(0.002)  # need a buffer time so the code can catch up (when reading in the pars at the top of the loop) 
         
 # stop the timer 
 t_stop = timer() 
