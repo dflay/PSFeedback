@@ -7,6 +7,7 @@
 # 1. Finish ROOT file output implementation 
 # 2. How to integrate the fixed probe input? 
 # 3. Get code to start a new data file when re-starting data taking (when toggling status switch) 
+#    - Do we really care about this? 
 
 import time 
 from instrument      import yokogawa 
@@ -29,7 +30,6 @@ gDataDIR         = './data/csv'
 gFileEXT         = 'csv'
 gIsDebug         = True
 gWriteROOT       = False          # write ROOT file   
-
 
 #_______________________________________________________________________________
 def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
@@ -187,8 +187,6 @@ pidLoop.setKi(0.8)
 pidLoop.setKd(0.)
 pidLoop.setSampleTime(0.01)
 
-parList = [] 
-
 # get all the parameters 
 getParameters(statusMgr,runMgr,fileMgr,pidLoop) 
 statusMgr.ipAddr = ip_addr
@@ -232,6 +230,6 @@ while(1):
 # stop the timer 
 t_stop = timer() 
 dt     = t_stop - t_start
-print("[PSFeedback]: Elapsed time: {0:.4f}".format(dt))
+print("[PSFeedback]: Elapsed time: {0:.4f} sec".format(dt))
 print("[PSFeedback]: System disabled and no longer taking data.")
 
