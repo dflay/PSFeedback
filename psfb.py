@@ -19,13 +19,17 @@ from pid             import PID
 gLOWER_LIMIT     = -200           # in mA 
 gUPPER_LIMIT     =  200           # in mA 
 gPrevLvl         = 0              # in mA 
+gPrevTime        = 0              # in seconds  
 gReadoutDelay    = 0.5            # in seconds 
-gRunTime         = 60.*5          # in seconds 
+gRunTime         = 60.*1          # in seconds 
 gCONV_mA_TO_AMPS = 1E-3           # 1 mA = 10^-3 A  
-gWriteROOT       = False          # write ROOT file   
 gDataFN          = "ps-feedback"  # output file name
 ip_addr          = "192.168.5.160" 
-gIsDebug         = True 
+gDataDIR         = './data/csv'
+gFileEXT         = 'csv'
+gIsDebug         = True
+gWriteROOT       = False          # write ROOT file   
+
 
 #_______________________________________________________________________________
 def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
@@ -36,7 +40,7 @@ def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
     killDAQ   = int(parList[0])  # 0 = alive,    1 = kill 
     daqStatus = int(parList[1])  # 0 = inactive, 1 = active  
     simMode   = int(parList[2])
-    manMode   = int(parList[3])
+    manMode   = int(parList[3])  # 0 = manual,   1 = auto  
     setpoint  = float(parList[4])
     P         = float(parList[5])
     I         = float(parList[6])
@@ -68,6 +72,15 @@ def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
     pidLoop.setKd(statusMgr.currentD) 
     pidLoop.SetPoint = statusMgr.currentSetPoint 
     if gIsDebug==True: print("[getParameters]: Parameters read from file")
+
+def checkRunTime(current_time,runMgr):
+    global gRunTime,gPrevTime  
+    dt = current_time - gPrevTime 
+    if dt>=gRunTime: 
+        if gIsDebug==True: print("[checkRunTime]: RUN FINISHED!  t_current = %.4f, t_prev = %.4f, diff = %.4f, run_max = %.4f" %(current_time,gPrevTime,dt,gRunTime) )
+        # run is finished, change run numbers
+        runMgr.updateRunNumber()
+        gPrevTime = current_time  
 
 def enableDAQ(statusMgr,runMgr,yoko):
     if statusMgr.isSimMode==False:
@@ -163,13 +176,10 @@ runMgr    = RunManager()
 pidLoop   = PID() 
 yoko      = yokogawa()
 
-dataDIR   = './data'
-fileEXT   = 'csv'
-
 # initialization
-fileMgr.fileEXT = fileEXT  
-fileMgr.dataDir = dataDIR 
-runMgr.dataDir  = dataDIR
+fileMgr.fileEXT = gFileEXT  
+fileMgr.dataDir = gDataDIR 
+runMgr.dataDir  = gDataDIR
 runMgr.tag      = "%s_run-" %(gDataFN)
 pidLoop         = PID()
 pidLoop.setKp(0.6)
@@ -205,29 +215,19 @@ while(1):
         if statusMgr.isConnected==True: 
             # we're connected, check elapsed time 
             t_current = float( timer() )
-            dt = t_current - t_prev 
-            if dt>=gRunTime: 
-               # run is finished, change run numbers
-               runMgr.updateRunNumber()
-               t_prev = t_current  
+            checkRunTime(t_current,runMgr) 
             # read out the event 
             readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko)
         # if in simulation mode, readout an event anyway 
         if statusMgr.isSimMode==True: 
             # we're connected, check elapsed time 
             t_current = float( timer() )
-            dt = t_current - t_prev 
-            print(t_current,t_prev,dt,gRunTime)
-            if dt>=gRunTime: 
-               # run is finished, change run numbers
-               if gIsDebug==True: print("RUN FINISHED! dt = %.4f, run time limit =  %.4f" %(dt,gRunTime) )
-               runMgr.updateRunNumber()
-               t_prev = t_current  
+            checkRunTime(t_current,runMgr) 
             readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko)
     else:
         # disable the DAQ 
         disableDAQ(statusMgr,yoko)
-    time.sleep(0.002)  
+    time.sleep(0.002)  # need a buffer time so the code can catch up  
         
 # stop the timer 
 t_stop = timer() 

@@ -149,7 +149,7 @@ class FileManager:
 
     def writeCSV(self,runNum,tag,event):
         rc = 0
-        theDir  = './data'
+        theDir  = self.dataDir  
         fn      = '%s_run-%05d.%s' %(tag,runNum,self.fileEXT)
         outpath = '%s/%s'      %(theDir,fn)
         # check if the directory exists before writing to file 
