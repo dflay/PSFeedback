@@ -21,7 +21,7 @@ Some libraries are needed to run the GUI:
 5. PyQt (4 or 5)  
 6. pyqtgraph
 
-Note: For the directions below, we may need to enter into the python environment.  Do this by running `pyenv`.  
+Note: For the directions below, we may need to enter into the python environment.  Do this by running `pyenv27`.  
 
 ### VXI-11
 
@@ -36,7 +36,10 @@ Note: For the directions below, we may need to enter into the python environment
 ### SIP 
 
 1. Go to /lib/ directory and unpack the SIP library
-2. Activate the python environment  
+2. Deactivate the UPS environment (comment out .upsrc in the .bashrc file)
+3. Logout, log back in to refresh the paths
+4. Run `scl enable python27 /bin/bash`
+2. Activate the python environment: 
 3. Run the configure script `python configure.py`; this will create the Makefile and associated tools
 4. Run `make`, then `sudo make install`.   
 

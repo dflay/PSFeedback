@@ -8,8 +8,6 @@ from timeit     import default_timer as timer
 # start a timer 
 t_start = timer()
 
-from PyQt4.QtCore import QTime 
-
 # get list of arguments to the program 
 # arglist = sys.argv
 # 
@@ -42,5 +40,4 @@ yoko.close_vxi_connection()
 t_stop = timer() 
 dt     = t_stop - t_start
 print("elapsed time: {0:.4f}".format(dt))
-
 
