@@ -22,7 +22,7 @@ gUPPER_LIMIT     =  200           # in mA
 gPrevLvl         = 0              # in mA 
 gPrevTime        = 0              # in seconds  
 gReadoutDelay    = 0.5            # in seconds 
-gRunTime         = 60.*1          # in seconds 
+gRunTime         = 2*HOURS        # in seconds  
 gCONV_mA_TO_AMPS = 1E-3           # 1 mA = 10^-3 A  
 gEventNumber     = 0 
 gDataFN          = "ps-feedback"  # output file name
