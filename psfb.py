@@ -132,7 +132,7 @@ def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko):
     if gIsDebug==True: print("[readEvent]: Reading event...")
     gEventNumber = gEventNumber + 1
     yoko_event = YokogawaEvent() 
-    x = now_timestamp()
+    x = now_timestamp_2()
     if statusMgr.manualMode==1:
        y = statusMgr.currentSetPoint
     else:
