@@ -37,6 +37,27 @@ class YokogawaEvent:
         self.i_fdbk         = 0
         self.d_fdbk         = 0
 #_______________________________________________________________________________
+# a class to keep track of the fixed probe info 
+class FixedProbeEvent: 
+    def __init__(self): 
+        self.units = "Hz"   # units can be Hz or ppm  
+        self.sf    = 1.0    # scale factor to convert field to mA 
+        self.clear() 
+
+    def clear(self):
+        # field average (current)  
+        self.field_avg      = 0
+        self.field_sig      = 0
+        # field average and sigma (previous)  
+        self.field_avg_prev = 0
+        self.field_sig_prev = 0
+        # effective current (mA)  
+        self.effective_current = 0
+
+    def process(self):
+        # convert fixed probe data to mA 
+        self.effective_current = (self.field_avg-self.field_avg_prev)*self.sf 
+#_______________________________________________________________________________
 # a class to keep track of the run number, and its start and stop times 
 class RunManager:
     def __init__(self):
