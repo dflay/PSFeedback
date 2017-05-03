@@ -4,10 +4,7 @@
 # - Will run indefinitely until a kill signal is sent via the psfb_set_pars program     
 
 # FIXME:
-# 1. Finish ROOT file output implementation 
-# 2. How to integrate the fixed probe input? 
-# 3. Get code to start a new data file when re-starting data taking (when toggling status switch) 
-#    - Do we really care about this? 
+# 1. How to integrate the fixed probe input? 
 
 import time 
 from instrument      import yokogawa 
