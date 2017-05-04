@@ -57,11 +57,47 @@ class PID:
         self.int_error = 0.0
         self.windup_guard = 20.0
 
+        # conversion factor from Hz to A 
         self.scale_factor = 1  
 
         self.output = 0.0
 
-    def update(self, feedback_value):
+    def update_2(self,meas_value):
+        # get error, current time, etc 
+        error             = self.SetPoint - meas_value
+        self.current_time = time.time()
+        delta_time        = self.current_time - self.last_time
+        delta_error       = error - self.last_error
+        # calculate P, I, D terms 
+        self.calculatePTerm(error,delta_time,delta_error) 
+        self.calculateITerm(error,delta_time,delta_error) 
+        self.calculateDTerm(error,delta_time,delta_error) 
+        # put it together 
+        self.output       = self.scale_factor*( self.PTerm + (self.Ki*self.ITerm) + (self.Kd*self.DTerm) ) 
+        # update values  
+        self.last_time    = self.current_time
+        self.last_error   = error
+        return self.output 
+
+    def calculatePTerm(self,error,dt,derr): 
+        if (dt >= self.sample_time):
+            self.PTerm = self.Kp*error 
+
+    def calculateITerm(self,error,dt,derr): 
+        if (dt >= self.sample_time):
+            self.iTerm += error*dt
+            if (self.ITerm < -self.windup_guard):
+                self.ITerm = -self.windup_guard
+            elif (self.ITerm > self.windup_guard):
+                self.ITerm = self.windup_guard
+ 
+    def calculateDTerm(self,error,dt,derr): 
+        self.DTerm = 0.0
+        if (dt >= self.sample_time):
+            if dt > 0:
+                self.DTerm = derr/dt
+
+    def update(self,feedback_value):
         # Calculates PID value for given reference feedback
         # math::
         #  u(t) = K_p e(t) + K_i \int_{0}^{t} e(t)dt + K_d {de}/{dt}
