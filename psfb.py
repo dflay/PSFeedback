@@ -119,9 +119,9 @@ def get_data(pidLoop):
     # this is where we would get some value from the fixed probes
     # for now, use a random number generator  
     val = get_random(gLOWER_LIMIT,gUPPER_LIMIT)
-    pidLoop.update(val)       # how does the fixed probe readout compare to the setpoint?    
+    output = pidLoop.update(val)       # how does the fixed probe readout compare to the setpoint?    
     if gIsDebug==True: print("[enableDAQ]: done!")
-    return pidLoop.output
+    return output
 
 # generate the data 
 def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko):
@@ -182,6 +182,8 @@ runMgr    = RunManager()
 pidLoop   = PID() 
 yoko      = yokogawa()
 
+sf        = (1./32.)*(5200./61.79E+6) # Hz/A 
+
 # initialization
 fileMgr.fileEXT = gFileEXT  
 fileMgr.dataDir = gDataDIR 
@@ -192,6 +194,7 @@ pidLoop.setKp(0.6)
 pidLoop.setKi(0.8)
 pidLoop.setKd(0.)
 pidLoop.setSampleTime(0.01)
+pidLoop.setScaleFactor(sf) 
 
 # get all the parameters 
 getParameters(statusMgr,runMgr,fileMgr,pidLoop) 

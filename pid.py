@@ -57,6 +57,8 @@ class PID:
         self.int_error = 0.0
         self.windup_guard = 20.0
 
+        self.scale_factor = 1  
+
         self.output = 0.0
 
     def update(self, feedback_value):
@@ -71,7 +73,7 @@ class PID:
         delta_error = error - self.last_error
 
         if (delta_time >= self.sample_time):
-            self.PTerm = self.Kp * error
+            self.PTerm = self.Kp * error 
             self.ITerm += error * delta_time
 
             if (self.ITerm < -self.windup_guard):
@@ -87,7 +89,8 @@ class PID:
             self.last_time = self.current_time
             self.last_error = error
 
-            self.output = self.PTerm + (self.Ki * self.ITerm) + (self.Kd * self.DTerm)
+            self.output = ( self.PTerm + (self.Ki * self.ITerm) + (self.Kd * self.DTerm) )*self.scale_factor 
+        return self.output 
 
     def setKp(self, proportional_gain):
         # Determines how aggressively the PID reacts to the current error with setting Proportional Gain
@@ -100,6 +103,9 @@ class PID:
     def setKd(self, derivative_gain):
         # Determines how aggressively the PID reacts to the current error with setting Derivative Gain
         self.Kd = derivative_gain
+
+    def setScaleFactor(self,sf): 
+        self.scale_factor = sf 
 
     def setWindup(self, windup):
         # Integral windup, also known as integrator windup or reset windup,
