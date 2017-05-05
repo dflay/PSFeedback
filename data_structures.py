@@ -41,7 +41,6 @@ class YokogawaEvent:
 class FixedProbeEvent: 
     def __init__(self): 
         self.units = "Hz"   # units can be Hz or ppm  
-        self.sf    = 1.0    # scale factor to convert field to mA 
         self.clear() 
 
     def clear(self):
@@ -54,9 +53,6 @@ class FixedProbeEvent:
         # effective current (mA)  
         self.effective_current = 0
 
-    def process(self):
-        # convert fixed probe data to mA 
-        self.effective_current = (self.field_avg-self.field_avg_prev)*self.sf 
 #_______________________________________________________________________________
 # a class to keep track of the run number, and its start and stop times 
 class RunManager:

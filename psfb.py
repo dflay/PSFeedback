@@ -6,11 +6,12 @@
 # FIXME:
 # 1. How to integrate the fixed probe input? 
 
-import time 
+import time
+from constants       import * 
+from util            import *
 from instrument      import yokogawa 
 from timeit          import default_timer as timer
 from data_structures import * 
-from util            import *
 from pid             import PID 
 
 # global variables 
@@ -21,6 +22,7 @@ gPrevTime        = 0              # in seconds
 gReadoutDelay    = 0.5            # in seconds 
 gRunTime         = 2*HOURS        # in seconds  
 gCONV_mA_TO_AMPS = 1E-3           # 1 mA = 10^-3 A  
+gCONV            = (1./32.)*(5200./61.79E+6) # A/Hz 
 gEventNumber     = 0 
 gDataFN          = "ps-feedback"  # output file name
 ip_addr          = "192.168.5.160" 
@@ -117,7 +119,7 @@ def get_data(pidLoop):
     global gIsDebug,gLOWER_LIMIT,gUPPER_LIMIT 
     if gIsDebug==True: print("[get_data]: getting data...")
     # this is where we would get some value from the fixed probes
-    # for now, use a random number generator  
+    # for now, use a random number generator 
     val = get_random(gLOWER_LIMIT,gUPPER_LIMIT)
     output = pidLoop.update(val)       # how does the fixed probe readout compare to the setpoint?    
     if gIsDebug==True: print("[enableDAQ]: done!")
@@ -163,9 +165,9 @@ def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko):
         yoko_event.output_enabled = int( yoko.get_output_state() )
     else:
         yoko_event.output_enabled = 0
-    yoko_event.p_fdbk             = pidLoop.Kp
-    yoko_event.i_fdbk             = pidLoop.Ki
-    yoko_event.d_fdbk             = pidLoop.Kd
+    yoko_event.p_fdbk = pidLoop.Kp
+    yoko_event.i_fdbk = pidLoop.Ki
+    yoko_event.d_fdbk = pidLoop.Kd
     # now write to file 
     if gIsDebug==True: print("[readEvent]: Event number = %d, current = %.4f" %(yoko_event.ID,yoko_event.current) ) 
     rc = fileMgr.writeYokogawaEvent(gWriteROOT,runMgr.runNum,gDataFN,yoko_event)
@@ -182,19 +184,17 @@ runMgr    = RunManager()
 pidLoop   = PID() 
 yoko      = yokogawa()
 
-sf        = (1./32.)*(5200./61.79E+6) # Hz/A 
-
 # initialization
 fileMgr.fileEXT = gFileEXT  
 fileMgr.dataDir = gDataDIR 
 runMgr.dataDir  = gDataDIR
 runMgr.tag      = "%s_run-" %(gDataFN)
 pidLoop         = PID()
-pidLoop.setKp(0.6)
-pidLoop.setKi(0.8)
+pidLoop.setKp(1.0)
+pidLoop.setKi(0.)
 pidLoop.setKd(0.)
 pidLoop.setSampleTime(0.01)
-pidLoop.setScaleFactor(sf) 
+pidLoop.setScaleFactor(gCONV) 
 
 # get all the parameters 
 getParameters(statusMgr,runMgr,fileMgr,pidLoop) 

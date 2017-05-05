@@ -38,10 +38,13 @@ class PID:
         self.Ki = I
         self.Kd = D
 
-        self.sample_time = 0.00
+        self.sample_time  = 0.00
         self.current_time = time.time()
-        self.last_time = self.current_time
+        self.last_time    = self.current_time
 
+        # conversion factor from Hz to A 
+        self.scale_factor = 1  
+        
         self.clear()
 
     def clear(self):
@@ -57,21 +60,19 @@ class PID:
         self.int_error = 0.0
         self.windup_guard = 20.0
 
-        # conversion factor from Hz to A 
-        self.scale_factor = 1  
-
         self.output = 0.0
 
     def update_2(self,meas_value):
+        # u(t) = K_p e(t) + K_i \int_{0}^{t} e(t)dt + K_d {de}/{dt}
         # get error, current time, etc 
         error             = self.SetPoint - meas_value
         self.current_time = time.time()
         delta_time        = self.current_time - self.last_time
         delta_error       = error - self.last_error
-        # calculate P, I, D terms 
-        self.calculatePTerm(error,delta_time,delta_error) 
-        self.calculateITerm(error,delta_time,delta_error) 
-        self.calculateDTerm(error,delta_time,delta_error) 
+        # update the P, I, D terms 
+        self.updatePTerm(error,delta_time,delta_error) 
+        self.updateITerm(error,delta_time,delta_error) 
+        self.updateDTerm(error,delta_time,delta_error) 
         # put it together 
         self.output       = self.scale_factor*( self.PTerm + (self.Ki*self.ITerm) + (self.Kd*self.DTerm) ) 
         # update values  
@@ -79,11 +80,11 @@ class PID:
         self.last_error   = error
         return self.output 
 
-    def calculatePTerm(self,error,dt,derr): 
+    def updatePTerm(self,error,dt,derr): 
         if (dt >= self.sample_time):
             self.PTerm = self.Kp*error 
 
-    def calculateITerm(self,error,dt,derr): 
+    def updateITerm(self,error,dt,derr): 
         if (dt >= self.sample_time):
             self.iTerm += error*dt
             if (self.ITerm < -self.windup_guard):
@@ -91,7 +92,7 @@ class PID:
             elif (self.ITerm > self.windup_guard):
                 self.ITerm = self.windup_guard
  
-    def calculateDTerm(self,error,dt,derr): 
+    def updateDTerm(self,error,dt,derr): 
         self.DTerm = 0.0
         if (dt >= self.sample_time):
             if dt > 0:
@@ -127,6 +128,12 @@ class PID:
 
             self.output = ( self.PTerm + (self.Ki * self.ITerm) + (self.Kd * self.DTerm) )*self.scale_factor 
         return self.output 
+
+    def setPID(self,P,I,D):
+        # set all terms at once  
+        self.Kp = P
+        self.Ki = I
+        self.Kd = D
 
     def setKp(self, proportional_gain):
         # Determines how aggressively the PID reacts to the current error with setting Proportional Gain
