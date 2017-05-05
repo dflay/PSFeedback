@@ -40,7 +40,8 @@ parser.add_argument('--i'         ,action='store',dest='i'         ,default=-1)
 parser.add_argument('--d'         ,action='store',dest='d'         ,default=-1)
 parser.add_argument('--setpoint'  ,action='store',dest='setpoint'  ,default=-300)
 parser.add_argument('--status'    ,action='store',dest='status'    ,default=-1)  # active (1), disabled (0)  
-parser.add_argument('--kill'      ,action='store',dest='kill'      ,default=-1)  # kill (1)  , do nothing (0)   
+parser.add_argument('--kill'      ,action='store_true')  # kill (1)  , do nothing (0)   
+parser.add_argument('--start'     ,action='store_true')  # kill (1)  , do nothing (0)   
 parser.add_argument('--debug'     ,action='store',dest='debug'     ,default=-1)  # debug mode
 parser.add_argument('--sim'       ,action='store',dest='sim'       ,default=-1)  # simulation mode; 0 = false, 1 = true 
 parser.add_argument('--mode'      ,action='store',dest='mode'      ,default=-1)  # mode: 0 = manual, 1 = auto 
@@ -60,8 +61,13 @@ iSimMode   = int(args.sim)
 iMode      = int(args.mode) 
 iDAQStatus = int(args.status)
 iKill      = int(args.kill)
+iStart     = int(args.start)
+
 # update values if necessary
-if iKill>=0:      killStatus  = iKill      
+if iKill>=0: 
+    killStatus  = iKill     
+elif iStart>=0:      
+    killStatus  = iStart-1  # want this to be zero...      
 if iDAQStatus>=0: daqStatus   = iDAQStatus
 if iSimMode>=0:   simMode     = iSimMode
 if iMode>=0:      mode        = iMode
