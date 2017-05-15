@@ -7,7 +7,7 @@
 # 1. How to integrate the fixed probe input? 
 
 import time
-import global_var 
+import global_var
 from util            import *
 from instrument      import yokogawa 
 from timeit          import default_timer as timer
@@ -15,19 +15,18 @@ from data_structures import *
 from pid             import PID 
 
 #_______________________________________________________________________________
-def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
-    global global_var.IS_DEBUG 
+def getParameters(statusMgr,runMgr,fileMgr,pidLoop,fpEvent):
     # read from parameter file 
-    parList   = fileMgr.readParameters()
+    parList      = fileMgr.readParameters()
     if global_var.IS_DEBUG==True: print("[getParameters]: Obtained %d parameters" %( len(parList) ) ) 
-    killDAQ   = int(parList[0])  # 0 = alive,    1 = kill 
-    daqStatus = int(parList[1])  # 0 = inactive, 1 = active  
-    simMode   = int(parList[2])
-    manMode   = int(parList[3])  # 0 = manual,   1 = auto  
-    setpoint  = float(parList[4])
-    P         = float(parList[5])
-    I         = float(parList[6])
-    D         = float(parList[7]) 
+    killDAQ      = int(parList[0])  # 0 = alive,    1 = kill 
+    daqStatus    = int(parList[1])  # 0 = inactive, 1 = active  
+    simMode      = int(parList[2])
+    manMode      = int(parList[3])  # 0 = manual,   1 = auto  
+    setpoint     = float(parList[4])
+    P            = float(parList[5])
+    I            = float(parList[6])
+    D            = float(parList[7]) 
     # update status manager  
     statusMgr.updateSetPoint(setpoint)
     statusMgr.updatePID(P,I,D)
@@ -50,14 +49,21 @@ def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
     else: 
         statusMgr.killDAQ    = False 
     # update PID loop  
-    pidLoop.setKp(statusMgr.currentP) 
-    pidLoop.setKi(statusMgr.currentI) 
-    pidLoop.setKd(statusMgr.currentD) 
-    pidLoop.SetPoint = statusMgr.currentSetPoint 
+    pidLoop.updatePID(statusMgr.currentP,statusMgr.currentI,statusMgr.currentD)
+    pidLoop.updateSetPoint(statusMgr.currentSetPoint)
+    # read in fixed probe data 
+    fpList       = fileMgr.readFPData()
+    fieldAvg_Hz  = float(fpList[0])   
+    fieldAvg_ppm = float(fpList[1])  
+    fieldSig_Hz  = float(fpList[2])   
+    fieldSig_ppm = float(fpList[3])  
+    # update the fixed probe event 
+    fpEvent.updateAverage(fieldAvg_Hz,fieldAvg_ppm)  
+    fpEvent.updateSigma(fieldSig_Hz,fieldSig_ppm)  
     if global_var.IS_DEBUG==True: print("[getParameters]: Parameters read from file")
 
 def checkRunTime(runMgr):
-    global global_var.RUN_TIME,global_var.PREV_TIME,global_var.EVENT_NUMBER 
+    # global global_var.PREV_TIME,global_var.EVENT_NUMBER # only need the variables we want to change 
     rc = 0 # 0 = not ready, 1 = ready 
     current_time = timer()  
     dt = current_time - global_var.PREV_TIME 
@@ -89,7 +95,6 @@ def enableDAQ(statusMgr,runMgr,yoko):
     if global_var.IS_DEBUG==True: print("[enableDAQ]: DAQ enabled")
 
 def disableDAQ(statusMgr,yoko):
-    global global_var.IS_DEBUG
     if statusMgr.isSimMode==False:
         if statusMgr.isConnected==True:
             # set the yokogawa level to zero, disable, and disconnect 
@@ -99,29 +104,32 @@ def disableDAQ(statusMgr,yoko):
             statusMgr.isConnected = False
     if global_var.IS_DEBUG==True: print("[disableDAQ]: DAQ disabled")
 
-def get_data(pidLoop):
-    global global_var.IS_DEBUG,global_var.LOWER_LIMIT,global_var.UPPER_LIMIT 
+def get_data(pidLoop,statusMgr,fpEvent):
     if global_var.IS_DEBUG==True: print("[get_data]: getting data...")
-    # this is where we would get some value from the fixed probes
-    # for now, use a random number generator 
-    val = get_random(global_var.LOWER_LIMIT,global_var.UPPER_LIMIT)
-    output = pidLoop.update(val)       # how does the fixed probe readout compare to the setpoint?    
+    # tMIN, tMAX for simulation mode 
+    tMIN = 40E+3 # in Hz 
+    tMAX = 60E+3 # in Hz 
+    if statusMgr.isSimMode==True: 
+       val = get_random(tMIN,tMAX)
+    else: 
+       val = fpEvent.field_avg_Hz 
+    # how does the fixed probe readout compare to the setpoint?
+    output = pidLoop.update(val)           
     if global_var.IS_DEBUG==True: print("[enableDAQ]: done!")
     return output
 
 # generate the data 
-def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko):
-    global global_var.IS_DEBUG     ,global_var.EVENT_NUMBER,global_var.PREV_LVL,\
-           global_var.READOUT_DELAY,global_var.LOWER_LIMIT ,global_var.UPPER_LIMIT,\
-           global_var.WRITE_ROOT   ,global_var.DATA_FN     ,global_var.CONV_mA_TO_AMPS 
+def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko,fpEvent):
+    # global global_var.EVENT_NUMBER,global_var.PREV_LVL
     if global_var.IS_DEBUG==True: print("[readEvent]: Reading event...")
     global_var.EVENT_NUMBER = global_var.EVENT_NUMBER + 1
     yoko_event = YokogawaEvent() 
     x = now_timestamp()
     if statusMgr.manualMode==1:
        y = statusMgr.currentSetPoint
+       y = y*global_var.CONV_Hz_TO_AMPS/1E-3 # need to convert to mA  
     else:
-       y = get_data(pidLoop)
+       y = get_data(pidLoop,statusMgr,fpEvent)/1E-3    # comes out in Amps, convert to mA 
     # check the level 
     if y>global_var.LOWER_LIMIT and y<global_var.UPPER_LIMIT:
        # looks good, do nothing 
@@ -131,12 +139,12 @@ def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko):
        if y<0: y = 0.8*global_var.LOWER_LIMIT
     # now program the yokogawa 
     if statusMgr.isSimMode==False:
-        if global_var.PREV_LVL!=y:                          # check to see if the yokogawa level changed 
+        if global_var.PREV_LVL!=y:               # check to see if the yokogawa level changed 
             yoko.set_level(y)                    # FIXME: relatively certain that we set the current in mA  
         # wait a bit 
         time.sleep(global_var.READOUT_DELAY)
         my_lvl   = float( yoko.get_level() )
-        lvl      = my_lvl/global_var.CONV_mA_TO_AMPS   # the readout is in Amps; convert to mA   
+        lvl      = my_lvl/1E-3                    # the readout is in Amps; convert to mA   
     else:
         # test mode; use the random data  
         time.sleep(global_var.READOUT_DELAY)
@@ -155,7 +163,7 @@ def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko):
     yoko_event.i_fdbk = pidLoop.Ki
     yoko_event.d_fdbk = pidLoop.Kd
     # now write to file 
-    if global_var.IS_DEBUG==True: print("[readEvent]: Event number = %d, current = %.4f" %(yoko_event.ID,yoko_event.current) ) 
+    if global_var.IS_DEBUG==True: print("[readEvent]: Event number = %d, current = %.4f mA" %(yoko_event.ID,yoko_event.current) ) 
     rc = fileMgr.writeYokogawaEvent(global_var.WRITE_ROOT,runMgr.runNum,global_var.DATA_FN,yoko_event)
     if rc==1:
         print("System: Cannot write data to file for run %d" %(runMgr.runNum) )
@@ -164,11 +172,12 @@ def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko):
     if global_var.IS_DEBUG==True: print("[readEvent]: Done!")
 #_______________________________________________________________________________
 
-fileMgr   = FileManager()
-statusMgr = StatusManager()
-runMgr    = RunManager()
-pidLoop   = PID() 
-yoko      = yokogawa()
+fileMgr    = FileManager()
+statusMgr  = StatusManager()
+runMgr     = RunManager()
+pidLoop    = PID() 
+fpEvent    = FixedProbeEvent() 
+yoko       = yokogawa()
 
 # initialization
 fileMgr.fileEXT = global_var.FILE_EXT  
@@ -176,14 +185,12 @@ fileMgr.dataDir = global_var.DATA_DIR
 runMgr.dataDir  = global_var.DATA_DIR
 runMgr.tag      = "%s_run-" %(global_var.DATA_FN)
 pidLoop         = PID()
-pidLoop.setKp(1.0)
-pidLoop.setKi(0.)
-pidLoop.setKd(0.)
+pidLoop.updatePID(1.0,0.0,0.0) 
 pidLoop.setSampleTime(0.01)
 pidLoop.setScaleFactor(global_var.CONV_Hz_TO_AMPS) 
 
 # get all the parameters 
-getParameters(statusMgr,runMgr,fileMgr,pidLoop) 
+getParameters(statusMgr,runMgr,fileMgr,pidLoop,fpEvent) 
 statusMgr.ipAddr = global_var.IP_ADDR
 
 enableDAQ(statusMgr,runMgr,yoko)  
@@ -194,7 +201,7 @@ t_start = timer()
 # now start an infinite loop
 while(1):
     # update the parameters 
-    getParameters(statusMgr,runMgr,fileMgr,pidLoop) 
+    getParameters(statusMgr,runMgr,fileMgr,pidLoop,fpEvent) 
     # check DAQ status 
     # Did we get a kill signal? 
     if statusMgr.killDAQ==True: 
@@ -209,14 +216,14 @@ while(1):
             rc = checkRunTime(runMgr) 
             if rc==1: runMgr.updateRunNumber() 
             # read out the event 
-            readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko)
+            readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko,fpEvent)
         # if in simulation mode, readout an event anyway 
         if statusMgr.isSimMode==True: 
             # we're connected, check elapsed time 
             rc = checkRunTime(runMgr) 
             if rc==1: runMgr.updateRunNumber() 
             # read out the event 
-            readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko)
+            readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko,fpEvent)
     else:
         # disable the DAQ 
         disableDAQ(statusMgr,yoko)

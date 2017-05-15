@@ -4,7 +4,7 @@
 
 import os
 import argparse
-from data_structures import YokogawaEvent, FileManager 
+from data_structures import FileManager 
 
 IsDebug         = False
 writeFPFile     = False  
@@ -95,7 +95,7 @@ if writeFPFile==True:
     fileMgr.writeFPData(fpAvg,fpAvgPPM)
 
 # if the start flag was used, start the program 
-cmd = "python psfb.py"
-if iStart==1: 
-   os.system(cmd) 
+# cmd = "python psfb.py"
+# if iStart==1: 
+#    os.system(cmd) 
  

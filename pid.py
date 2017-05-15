@@ -129,11 +129,14 @@ class PID:
             self.output = ( self.PTerm + (self.Ki * self.ITerm) + (self.Kd * self.DTerm) )*self.scale_factor 
         return self.output 
 
-    def setPID(self,P,I,D):
+    def updatePID(self,P,I,D):
         # set all terms at once  
         self.Kp = P
         self.Ki = I
         self.Kd = D
+
+    def updateSetPoint(self,setpoint): 
+        self.SetPoint = setpoint 
 
     def setKp(self, proportional_gain):
         # Determines how aggressively the PID reacts to the current error with setting Proportional Gain

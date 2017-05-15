@@ -40,18 +40,21 @@ class YokogawaEvent:
 # a class to keep track of the fixed probe info 
 class FixedProbeEvent: 
     def __init__(self): 
-        self.units = "Hz"   # units can be Hz or ppm  
         self.clear() 
 
+    def updateAverage(self,avg_hz,avg_ppm): 
+        self.field_avg_Hz  = avg_hz  
+        self.field_avg_ppm = avg_ppm  
+
+    def updateSigma(self,sig_hz,sig_ppm): 
+        self.field_sig_Hz  = sig_hz  
+        self.field_sig_ppm = sig_ppm  
+
     def clear(self):
-        # field average (current)  
-        self.field_avg      = 0
-        self.field_sig      = 0
-        # field average and sigma (previous)  
-        self.field_avg_prev = 0
-        self.field_sig_prev = 0
-        # effective current (mA)  
-        self.effective_current = 0
+        self.field_avg_Hz  = 0
+        self.field_sig_Hz  = 0
+        self.field_avg_ppm = 0
+        self.field_sig_ppm = 0
 
 #_______________________________________________________________________________
 # a class to keep track of the run number, and its start and stop times 
