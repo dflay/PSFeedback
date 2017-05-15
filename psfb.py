@@ -7,36 +7,19 @@
 # 1. How to integrate the fixed probe input? 
 
 import time
-from constants       import * 
+import global_var 
 from util            import *
 from instrument      import yokogawa 
 from timeit          import default_timer as timer
 from data_structures import * 
 from pid             import PID 
 
-# global variables 
-gLOWER_LIMIT     = -200           # in mA 
-gUPPER_LIMIT     =  200           # in mA 
-gPrevLvl         = 0              # in mA 
-gPrevTime        = 0              # in seconds  
-gReadoutDelay    = 0.5            # in seconds 
-gRunTime         = 2*HOURS        # in seconds  
-gCONV_mA_TO_AMPS = 1E-3           # 1 mA = 10^-3 A  
-gCONV            = (1./32.)*(5200./61.79E+6) # A/Hz 
-gEventNumber     = 0 
-gDataFN          = "ps-feedback"  # output file name
-ip_addr          = "192.168.5.160" 
-gDataDIR         = './data'
-gFileEXT         = 'csv'
-gIsDebug         = True
-gWriteROOT       = True           # write ROOT file   
-
 #_______________________________________________________________________________
 def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
-    global gIsDebug 
+    global global_var.IS_DEBUG 
     # read from parameter file 
     parList   = fileMgr.readParameters()
-    if gIsDebug==True: print("[getParameters]: Obtained %d parameters" %( len(parList) ) ) 
+    if global_var.IS_DEBUG==True: print("[getParameters]: Obtained %d parameters" %( len(parList) ) ) 
     killDAQ   = int(parList[0])  # 0 = alive,    1 = kill 
     daqStatus = int(parList[1])  # 0 = inactive, 1 = active  
     simMode   = int(parList[2])
@@ -71,20 +54,21 @@ def getParameters(statusMgr,runMgr,fileMgr,pidLoop):
     pidLoop.setKi(statusMgr.currentI) 
     pidLoop.setKd(statusMgr.currentD) 
     pidLoop.SetPoint = statusMgr.currentSetPoint 
-    if gIsDebug==True: print("[getParameters]: Parameters read from file")
+    if global_var.IS_DEBUG==True: print("[getParameters]: Parameters read from file")
 
 def checkRunTime(runMgr):
-    global gRunTime,gPrevTime,gEventNumber 
+    global global_var.RUN_TIME,global_var.PREV_TIME,global_var.EVENT_NUMBER 
     rc = 0 # 0 = not ready, 1 = ready 
     current_time = timer()  
-    dt = current_time - gPrevTime 
-    if dt>=gRunTime: 
-        if gIsDebug==True: print("[checkRunTime]: RUN %d FINISHED!  t_current = %.4E, t_prev = %.4E, diff = %.4E, run_max = %.4E" \
-                           %(runMgr.runNum,current_time,gPrevTime,dt,gRunTime) )
+    dt = current_time - global_var.PREV_TIME 
+    if dt>=global_var.RUN_TIME: 
+        if global_var.IS_DEBUG==True: 
+            print("[checkRunTime]: RUN %d FINISHED!  t_current = %.4E, t_prev = %.4E, diff = %.4E, run_max = %.4E" \
+                           %(runMgr.runNum,current_time,global_var.PREV_TIME,dt,global_var.RUN_TIME) )
         # clear event number 
-        gEventNumber = 0 
-        if gIsDebug==True: print("[checkRunTime]: Starting run %d" %(runMgr.runNum+1) )
-        gPrevTime = current_time  
+        global_var.EVENT_NUMBER = 0 
+        if global_var.IS_DEBUG==True: print("[checkRunTime]: Starting run %d" %(runMgr.runNum+1) )
+        global_var.PREV_TIME = current_time  
         rc = 1
     return rc  
 
@@ -102,10 +86,10 @@ def enableDAQ(statusMgr,runMgr,yoko):
             yoko.enable_output() 
             statusMgr.isConnected = True
     runMgr.updateRunNumber()  # update the run number 
-    if gIsDebug==True: print("[enableDAQ]: DAQ enabled")
+    if global_var.IS_DEBUG==True: print("[enableDAQ]: DAQ enabled")
 
 def disableDAQ(statusMgr,yoko):
-    global gIsDebug
+    global global_var.IS_DEBUG
     if statusMgr.isSimMode==False:
         if statusMgr.isConnected==True:
             # set the yokogawa level to zero, disable, and disconnect 
@@ -113,50 +97,52 @@ def disableDAQ(statusMgr,yoko):
             yoko.disable_output()
             yoko.close_vxi_connection()
             statusMgr.isConnected = False
-    if gIsDebug==True: print("[disableDAQ]: DAQ disabled")
+    if global_var.IS_DEBUG==True: print("[disableDAQ]: DAQ disabled")
 
 def get_data(pidLoop):
-    global gIsDebug,gLOWER_LIMIT,gUPPER_LIMIT 
-    if gIsDebug==True: print("[get_data]: getting data...")
+    global global_var.IS_DEBUG,global_var.LOWER_LIMIT,global_var.UPPER_LIMIT 
+    if global_var.IS_DEBUG==True: print("[get_data]: getting data...")
     # this is where we would get some value from the fixed probes
     # for now, use a random number generator 
-    val = get_random(gLOWER_LIMIT,gUPPER_LIMIT)
+    val = get_random(global_var.LOWER_LIMIT,global_var.UPPER_LIMIT)
     output = pidLoop.update(val)       # how does the fixed probe readout compare to the setpoint?    
-    if gIsDebug==True: print("[enableDAQ]: done!")
+    if global_var.IS_DEBUG==True: print("[enableDAQ]: done!")
     return output
 
 # generate the data 
 def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko):
-    global gIsDebug,gEventNumber,gPrevLvl,gReadoutDelay,gLOWER_LIMIT,gUPPER_LIMIT,gWriteROOT,gDataFN,gCONV_mA_TO_AMPS 
-    if gIsDebug==True: print("[readEvent]: Reading event...")
-    gEventNumber = gEventNumber + 1
+    global global_var.IS_DEBUG     ,global_var.EVENT_NUMBER,global_var.PREV_LVL,\
+           global_var.READOUT_DELAY,global_var.LOWER_LIMIT ,global_var.UPPER_LIMIT,\
+           global_var.WRITE_ROOT   ,global_var.DATA_FN     ,global_var.CONV_mA_TO_AMPS 
+    if global_var.IS_DEBUG==True: print("[readEvent]: Reading event...")
+    global_var.EVENT_NUMBER = global_var.EVENT_NUMBER + 1
     yoko_event = YokogawaEvent() 
-    x = now_timestamp_2()
+    x = now_timestamp()
     if statusMgr.manualMode==1:
        y = statusMgr.currentSetPoint
     else:
        y = get_data(pidLoop)
     # check the level 
-    if y>gLOWER_LIMIT and y<gUPPER_LIMIT:
+    if y>global_var.LOWER_LIMIT and y<global_var.UPPER_LIMIT:
        # looks good, do nothing 
        y = y
     else:
-       if y>0: y = 0.8*gUPPER_LIMIT
-       if y<0: y = 0.8*gLOWER_LIMIT
+       if y>0: y = 0.8*global_var.UPPER_LIMIT
+       if y<0: y = 0.8*global_var.LOWER_LIMIT
     # now program the yokogawa 
     if statusMgr.isSimMode==False:
-        if gPrevLvl!=y:                          # check to see if the yokogawa level changed 
+        if global_var.PREV_LVL!=y:                          # check to see if the yokogawa level changed 
             yoko.set_level(y)                    # FIXME: relatively certain that we set the current in mA  
         # wait a bit 
-        time.sleep(gReadoutDelay)
+        time.sleep(global_var.READOUT_DELAY)
         my_lvl   = float( yoko.get_level() )
-        lvl      = my_lvl/gCONV_mA_TO_AMPS   # the readout is in Amps; convert to mA   
+        lvl      = my_lvl/global_var.CONV_mA_TO_AMPS   # the readout is in Amps; convert to mA   
     else:
         # test mode; use the random data  
-        time.sleep(gReadoutDelay)
+        time.sleep(global_var.READOUT_DELAY)
         lvl = y
     # save the data to the event object
-    yoko_event.ID             = gEventNumber 
+    yoko_event.ID             = global_var.EVENT_NUMBER 
     yoko_event.timestamp      = x
     yoko_event.current        = lvl
     yoko_event.setpoint       = statusMgr.currentSetPoint
@@ -169,13 +155,13 @@ def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko):
     yoko_event.i_fdbk = pidLoop.Ki
     yoko_event.d_fdbk = pidLoop.Kd
     # now write to file 
-    if gIsDebug==True: print("[readEvent]: Event number = %d, current = %.4f" %(yoko_event.ID,yoko_event.current) ) 
-    rc = fileMgr.writeYokogawaEvent(gWriteROOT,runMgr.runNum,gDataFN,yoko_event)
+    if global_var.IS_DEBUG==True: print("[readEvent]: Event number = %d, current = %.4f" %(yoko_event.ID,yoko_event.current) ) 
+    rc = fileMgr.writeYokogawaEvent(global_var.WRITE_ROOT,runMgr.runNum,global_var.DATA_FN,yoko_event)
     if rc==1:
         print("System: Cannot write data to file for run %d" %(runMgr.runNum) )
     # save the level as the previous one 
-    gPrevLvl = lvl
-    if gIsDebug==True: print("[readEvent]: Done!")
+    global_var.PREV_LVL = lvl
+    if global_var.IS_DEBUG==True: print("[readEvent]: Done!")
 #_______________________________________________________________________________
 
 fileMgr   = FileManager()
@@ -185,20 +171,20 @@ pidLoop   = PID()
 yoko      = yokogawa()
 
 # initialization
-fileMgr.fileEXT = gFileEXT  
-fileMgr.dataDir = gDataDIR 
-runMgr.dataDir  = gDataDIR
-runMgr.tag      = "%s_run-" %(gDataFN)
+fileMgr.fileEXT = global_var.FILE_EXT  
+fileMgr.dataDir = global_var.DATA_DIR 
+runMgr.dataDir  = global_var.DATA_DIR
+runMgr.tag      = "%s_run-" %(global_var.DATA_FN)
 pidLoop         = PID()
 pidLoop.setKp(1.0)
 pidLoop.setKi(0.)
 pidLoop.setKd(0.)
 pidLoop.setSampleTime(0.01)
-pidLoop.setScaleFactor(gCONV) 
+pidLoop.setScaleFactor(global_var.CONV_Hz_TO_AMPS) 
 
 # get all the parameters 
 getParameters(statusMgr,runMgr,fileMgr,pidLoop) 
-statusMgr.ipAddr = ip_addr
+statusMgr.ipAddr = global_var.IP_ADDR
 
 enableDAQ(statusMgr,runMgr,yoko)  
 

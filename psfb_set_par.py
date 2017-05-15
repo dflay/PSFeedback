@@ -39,14 +39,14 @@ parser.add_argument('--p'         ,action='store',dest='p'         ,default=-1)
 parser.add_argument('--i'         ,action='store',dest='i'         ,default=-1)
 parser.add_argument('--d'         ,action='store',dest='d'         ,default=-1)
 parser.add_argument('--setpoint'  ,action='store',dest='setpoint'  ,default=-300)
-parser.add_argument('--status'    ,action='store',dest='status'    ,default=-1)  # active (1), disabled (0)  
-parser.add_argument('--kill'      ,action='store_true')  # kill (1)  , do nothing (0)   
-parser.add_argument('--start'     ,action='store_true')  # kill (1)  , do nothing (0)   
-parser.add_argument('--debug'     ,action='store',dest='debug'     ,default=-1)  # debug mode
-parser.add_argument('--sim'       ,action='store',dest='sim'       ,default=-1)  # simulation mode; 0 = false, 1 = true 
-parser.add_argument('--mode'      ,action='store',dest='mode'      ,default=-1)  # mode: 0 = manual, 1 = auto 
-parser.add_argument('--fp_avg'    ,action='store',dest='fp_avg'    ,default=-1)  # fixed probe average field value (Hz)  
-parser.add_argument('--fp_avg_ppm',action='store',dest='fp_avg_ppm',default=-1)  # fixed probe average field value (ppm)  
+parser.add_argument('--status'    ,action='store',dest='status'    ,default=-1)    # active (1), disabled (0)  
+parser.add_argument('--kill'      ,action='store_true')                            # kill (1)  , do nothing (0)   
+parser.add_argument('--start'     ,action='store_true')                            # enable starting the system    
+parser.add_argument('--debug'     ,action='store',dest='debug'     ,default=-1)    # debug mode
+parser.add_argument('--sim'       ,action='store',dest='sim'       ,default=-1)    # simulation mode; 0 = false, 1 = true 
+parser.add_argument('--mode'      ,action='store',dest='mode'      ,default=-1)    # mode: 0 = manual, 1 = auto 
+parser.add_argument('--fp_avg'    ,action='store',dest='fp_avg'    ,default=-1)    # fixed probe average field value (Hz)  
+parser.add_argument('--fp_avg_ppm',action='store',dest='fp_avg_ppm',default=-1)    # fixed probe average field value (ppm)  
 # parse command-line arguments
 args = parser.parse_args()
 
