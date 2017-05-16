@@ -104,18 +104,18 @@ def disableDAQ(statusMgr,yoko):
             statusMgr.isConnected = False
     if global_var.IS_DEBUG==True: print("[disableDAQ]: DAQ disabled")
 
-def get_data(pidLoop,statusMgr,fpEvent):
-    if global_var.IS_DEBUG==True: print("[get_data]: getting data...")
-    # tMIN, tMAX for simulation mode 
-    tMIN = 40E+3 # in Hz 
-    tMAX = 60E+3 # in Hz 
+def getData(pidLoop,statusMgr,fpEvent):
+    if global_var.IS_DEBUG==True: print("[getData]: getting data...")
     if statusMgr.isSimMode==True: 
+       # tMIN, tMAX for simulation mode 
+       tMIN = 40E+3 # in Hz 
+       tMAX = 60E+3 # in Hz 
        val = get_random(tMIN,tMAX)
     else: 
        val = fpEvent.field_avg_Hz 
-    # how does the fixed probe readout compare to the setpoint?
+    # get updated value based on setpoint  
     output = pidLoop.update(val)           
-    if global_var.IS_DEBUG==True: print("[enableDAQ]: done!")
+    if global_var.IS_DEBUG==True: print("[getData]: done!")
     return output
 
 # generate the data 
@@ -129,7 +129,7 @@ def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko,fpEvent):
        y = statusMgr.currentSetPoint
        y = y*global_var.CONV_Hz_TO_AMPS/1E-3 # need to convert to mA  
     else:
-       y = get_data(pidLoop,statusMgr,fpEvent)/1E-3    # comes out in Amps, convert to mA 
+       y = getData(pidLoop,statusMgr,fpEvent)/1E-3    # comes out in Amps, convert to mA 
     # check the level 
     if y>global_var.LOWER_LIMIT and y<global_var.UPPER_LIMIT:
        # looks good, do nothing 
