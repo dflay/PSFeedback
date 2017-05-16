@@ -1,7 +1,5 @@
 // a script that shows plots of all relevant variables 
 
-// FIXME: Can't get the timestamp right... 
-
 #include <iostream> 
 
 #include "TDatime.h"
@@ -13,7 +11,8 @@
 #include "./include/YokogawaEvent.h"
 #include "./src/Graph.C"
 
-bool gUseTimeStamp = false; 
+bool gIsDebug      = false; 
+bool gUseTimeStamp = true; 
 
 void FillVector(TString axis,vector<YokogawaEvent_t> Event,vector<double> &v); 
 TGraph *GetTGraph(TString xaxis,TString yaxis,vector<YokogawaEvent_t> Event);  
@@ -49,16 +48,16 @@ void Plot(){
    char *time_stamp = new char[100];
    TDatime da(2000,0,0,0,0,0);
 
-   int utc_time=0; 
-   int myYear =0;
+   int utc_time = 0;
+   int myYear=0; 
 
    const int NEvents = myTree->GetEntries(); 
    for(int i=0;i<NEvents;i++){
       myTree->GetEntry(i);
       // some effort to get a timestamp... 
-      utc_time              = (Int_t)( timeLeaf->GetValue() );  
+      utc_time              = timeLeaf->GetValue()/1E+6; // NOTE: This is in usec!  Divide by 10^6.  
       time_stamp            = GetTimeStamp(utc_time); 
-      // std::cout << i << "\t" << utc_time << "\t" << time_stamp << "\t" << currentLeaf->GetValue() << std::endl; 
+      if(gIsDebug) std::cout << i << "\t" << utc_time << "\t" << time_stamp << "\t" << currentLeaf->GetValue() << std::endl; 
       da.Set(time_stamp);
       myYear = da.GetYear();
       if(myYear<2000) continue;  
@@ -226,20 +225,13 @@ char *GetTimeStamp(int unix_time){
     // Format time, "ddd yyyy-mm-dd hh:mm:ss zzz"
     ts = *localtime(&utime);
     strftime(buf, sizeof(buf), "%a %Y-%m-%d %H:%M:%S %Z", &ts);
-    // printf("%s\n",buf);
-
     // format time stamp: remove timezone at the end 
     int length = strlen(buf);
     for(int i=length-1;i>=length-3;i--) buf[i] = '\0';
-
     // format time stamp: remove day label at the front  
     char *time_stamp = new char[100];
     strcpy(time_stamp,buf);
     for(int i=0;i<3;i++) time_stamp++;
-    // cout << time_stamp << endl;
-
     return time_stamp;
-
 }
-
 
