@@ -133,7 +133,7 @@ void Plot(){
 
    c2->cd(1);
    gMode->Draw("ap");
-   gMode->SetTitle("Mode (0 = manual, 1 = auto)"); 
+   gMode->SetTitle("Mode (1 = manual, 0 = auto)"); 
    gMode->GetXaxis()->SetTitle(xAxisTitle); 
    gMode->GetXaxis()->CenterTitle(); 
    if(gUseTimeStamp){

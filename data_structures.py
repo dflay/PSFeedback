@@ -149,12 +149,12 @@ class FileManager:
             print("[FileManager]: Cannot access the directory %s. " %(theDir) )
         return myList 
 
-    def writeFPData(self,field_avg,field_avg_ppm):
+    def writeFPData(self,field_avg,field_avg_ppm,field_sig,field_sig_ppm):
         theDir  = './input'
         outpath = '%s/fixed-probe-data.%s' %(theDir,self.fileEXT)
         if (os.path.isdir(theDir)==True ):
             myFile = open(outpath,'w')
-            myFile.write( "%.3f,%.3f" %(field_avg,field_avg_ppm) )
+            myFile.write( "%.3f,%.3f,%.3f,%.3f" %(field_avg,field_avg_ppm,field_sig,field_sig_ppm) )
             myFile.close()
             rc = 0
         else:
