@@ -4,6 +4,7 @@
 
 import os
 import argparse
+import global_var 
 from data_structures import FileManager 
 
 IsDebug         = False
@@ -27,7 +28,6 @@ P          = float(parList[5])
 I          = float(parList[6])
 D          = float(parList[7])
 
-
 fpList    = [] 
 fpList    = fileMgr.readFPData()
 fpAvg     = float(fpList[0]) 
@@ -37,19 +37,20 @@ fpSigPPM  = float(fpList[3])
 
 parser = argparse.ArgumentParser(description='PS Feedback Parameters') 
 # declare arguments 
-parser.add_argument('--p'          ,action='store',dest='p'         ,default=P)
-parser.add_argument('--i'          ,action='store',dest='i'         ,default=I)
-parser.add_argument('--d'          ,action='store',dest='d'         ,default=D)
-parser.add_argument('--setpoint'   ,action='store',dest='setpoint'  ,default=setpoint)
-parser.add_argument('--status'     ,action='store',dest='status'    ,default=daqStatus) # active (1), disabled (0)  
-parser.add_argument('--kill'       ,action='store_true')                                # kill program 
-parser.add_argument('--start'      ,action='store_true')                                # enable starting the system    
-parser.add_argument('--debug'      ,action='store_true')                                # debug mode
-parser.add_argument('--sim'        ,action='store',dest='sim'       ,default=simMode)        # simulation mode; 0 = false, 1 = true 
-parser.add_argument('--manual_mode',action='store_true')                                # manual mode 
-parser.add_argument('--auto_mode'  ,action='store_true')                                # auto mode (used fixed probe data) 
-parser.add_argument('--fp_avg'     ,action='store',dest='fp_avg'    ,default=fpAvg)     # fixed probe average field value (Hz)  
-parser.add_argument('--fp_avg_ppm' ,action='store',dest='fp_avg_ppm',default=fpAvgPPM)  # fixed probe average field value (ppm)  
+parser.add_argument('--p'          ,action='store',dest='p'          ,default=None)
+parser.add_argument('--i'          ,action='store',dest='i'          ,default=None)
+parser.add_argument('--d'          ,action='store',dest='d'          ,default=None)
+parser.add_argument('--setpoint'   ,action='store',dest='setpoint'   ,default=None)
+parser.add_argument('--setpoint_mA',action='store',dest='setpoint_mA',default=None)
+parser.add_argument('--status'     ,action='store',dest='status'     ,default=None) # active (1), disabled (0)  
+parser.add_argument('--kill'       ,action='store_true')                            # kill program 
+parser.add_argument('--start'      ,action='store_true')                            # enable starting the system    
+parser.add_argument('--debug'      ,action='store_true')                            # debug mode
+parser.add_argument('--sim'        ,action='store',dest='sim'        ,default=None) # simulation mode; 0 = false, 1 = true 
+parser.add_argument('--manual_mode',action='store_true')                            # manual mode 
+parser.add_argument('--auto_mode'  ,action='store_true')                            # auto mode (used fixed probe data) 
+parser.add_argument('--fp_avg'     ,action='store',dest='fp_avg'     ,default=None) # fixed probe average field value (Hz)  
+parser.add_argument('--fp_avg_ppm' ,action='store',dest='fp_avg_ppm' ,default=None) # fixed probe average field value (ppm)  
 # parse command-line arguments
 args = parser.parse_args()
 
@@ -96,17 +97,22 @@ if args.d is not None:
     D = float(args.d)  
 
 if args.setpoint is not None: 
-    setpoint = float(args.setpoint)  
+    setpoint   = float(args.setpoint) 
+
+# was the setpoint applied in mA?
+if args.setpoint_mA is not None:  
+    setpoint_A = float(args.setpoint_mA)*1E-3 
+    setpoint   = setpoint_A/global_var.CONV_Hz_TO_AMPS
 
 # use only one flag, not both (that won't make sense!) 
 if args.fp_avg is not None: 
-    fpAvg    = float(args.fp_avg) 
-    fpAvgPPM = (fpAvg-setpoint)/CONV_Hz_TO_ppm 
+    fpAvg       = float(args.fp_avg) 
+    fpAvgPPM    = (fpAvg-setpoint)/CONV_Hz_TO_ppm 
     writeFPFile = True  
 
 if args.fp_avg_ppm is not None:
-    fpAvgPPM = float(args.fp_avg_ppm) 
-    fpAvg    = fpAvgPPM*CONV_Hz_TO_ppm + setpoint
+    fpAvgPPM    = float(args.fp_avg_ppm) 
+    fpAvg       = fpAvgPPM*CONV_Hz_TO_ppm + setpoint
     writeFPFile = True  
 
 if IsDebug==True: 

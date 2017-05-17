@@ -86,4 +86,8 @@ Finished processing dependencies for python-vxi11==0.9
 
 1. Go into python environment (pyenv)
 2. python2.7 setup.py install 
- 
+
+=========== internet settings
+1. After a restart, on g2field-fe2: 
+   - sudo ifconfig eth2 up
+   - sudo ifconfig eth2 192.168.5.101
