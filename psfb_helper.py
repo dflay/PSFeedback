@@ -27,9 +27,6 @@ P          = float(parList[5])
 I          = float(parList[6])
 D          = float(parList[7])
 
-print("OLD VALUES:") 
-print("P = %.3f, I = %.3f, D = %.3f, setpoint = %.3f, simMode = %d, mode = %d, daqStatus = %d, killStatus = %d" \
-          %(P,I,D,setpoint,simMode,mode,daqStatus,killStatus) )
 
 fpList    = [] 
 fpList    = fileMgr.readFPData()
@@ -55,6 +52,13 @@ parser.add_argument('--fp_avg'     ,action='store',dest='fp_avg'    ,default=fpA
 parser.add_argument('--fp_avg_ppm' ,action='store',dest='fp_avg_ppm',default=fpAvgPPM)  # fixed probe average field value (ppm)  
 # parse command-line arguments
 args = parser.parse_args()
+
+IsDebug = bool(args.debug)  
+
+if IsDebug:  
+    print("[PSFeedback]: OLD VALUES:") 
+    print("P = %.3f, I = %.3f, D = %.3f, setpoint = %.3f, simMode = %d, mode = %d, daqStatus = %d, killStatus = %d" \
+              %(P,I,D,setpoint,simMode,mode,daqStatus,killStatus) )
 
 # now let's see if any of the parameters were changed via the command line 
 
@@ -105,9 +109,8 @@ if args.fp_avg_ppm is not None:
     fpAvg    = fpAvgPPM*CONV_Hz_TO_ppm + setpoint
     writeFPFile = True  
 
-IsDebug = bool(args.debug)   
 if IsDebug==True: 
-    print("NEW VALUES:") 
+    print("[PSFeedback]: NEW VALUES:") 
     print("P = %.3f, I = %.3f, D = %.3f, setpoint = %.3f, simMode = %d, mode = %d, daqStatus = %d, killStatus = %d, start = %d" \
           %(P,I,D,setpoint,simMode,mode,daqStatus,killStatus,startDAQ) )
 
@@ -120,5 +123,8 @@ if writeFPFile==True:
 task = "python psfb.py"
 cmd  = "screen -S ps-fdbk -d -m %s" %(task) 
 if startDAQ: 
-   os.system(cmd) 
+   os.system(cmd)
+   print("[PSFeedback]: The program has been started with the values: ")     
+   print("              P = %.3f, I = %.3f, D = %.3f, setpoint = %.3f, simMode = %d, mode = %d, daqStatus = %d, killStatus = %d" \
+          %(P,I,D,setpoint,simMode,mode,daqStatus,killStatus) )
 
