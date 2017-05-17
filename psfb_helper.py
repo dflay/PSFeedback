@@ -115,10 +115,10 @@ fileMgr.writeParameters(killStatus,daqStatus,simMode,mode,setpoint,P,I,D)
  
 if writeFPFile==True: 
     fileMgr.writeFPData(fpAvg,fpAvgPPM,fpSig,fpSigPPM)
-# 
-# # if the start flag was used, start the program 
-# task = "python psfb.py"
-# cmd  = "screen -S ps-fdbk -d -m %s" %(task) 
-# if startDAQ: 
-#    os.system(cmd) 
+
+# if the start flag was used, start the program 
+task = "python psfb.py"
+cmd  = "screen -S ps-fdbk -d -m %s" %(task) 
+if startDAQ: 
+   os.system(cmd) 
 
