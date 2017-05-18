@@ -126,11 +126,15 @@ class FileManager:
         inpath = '%s/fixed-probe-data.%s' %(theDir,self.fileEXT)
         myList  = [] 
         if (os.path.isdir(theDir)==True ):
-            with open(inpath,'rb') as f:
-                reader = csv.reader(f)
-                for row in reader:
-                    myList = row 
-                f.close()
+            if os.path.isfile(inpath): 
+                with open(inpath,'rb') as f:
+                    reader = csv.reader(f)
+                    for row in reader:
+                        myList = row 
+                    f.close()
+            else:  
+                print( "[FileManager]: File %s does not exist.  Returning zeroes." %(inpath) )
+                for i in range(0,4): myList.append(0.) 
         else:
             print("[FileManager]: Cannot access the directory %s. " %(theDir) )
         return myList 
@@ -140,14 +144,22 @@ class FileManager:
         inpath = '%s/parameters.%s' %(theDir,self.fileEXT)
         myList  = [] 
         if (os.path.isdir(theDir)==True ):
-            with open(inpath,'rb') as f:
-                reader = csv.reader(f)
-                for row in reader:
-                    myList = row 
-                f.close()
+            if os.path.isfile(inpath): 
+                with open(inpath,'rb') as f:
+                    reader = csv.reader(f)
+                    for row in reader:
+                        myList = row 
+                    f.close()
+            else: 
+                print( "[FileManager]: File %s does not exist.  Returning default parameters." %(inpath) ) 
+                myList = self.getDefaultParameters() 
         else:
             print("[FileManager]: Cannot access the directory %s. " %(theDir) )
         return myList 
+
+    def getDefaultParameters(self):
+        myList = [1,0,1,1,0,0,0,0] # kill program, DAQ disabled, simulation mode, manual mode, setpoint, P, I, D = 0  
+        return myList
 
     def writeFPData(self,field_avg,field_avg_ppm,field_sig,field_sig_ppm):
         theDir  = './input'
