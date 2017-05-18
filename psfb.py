@@ -52,14 +52,15 @@ def getParameters(statusMgr,runMgr,fileMgr,pidLoop,fpEvent):
     pidLoop.updatePID(statusMgr.currentP,statusMgr.currentI,statusMgr.currentD)
     pidLoop.updateSetPoint(statusMgr.currentSetPoint)
     # read in fixed probe data 
-    fpList       = fileMgr.readFPData()
-    fieldAvg_Hz  = float(fpList[0])   
-    fieldAvg_ppm = float(fpList[1])  
-    fieldSig_Hz  = float(fpList[2])   
-    fieldSig_ppm = float(fpList[3])  
-    # update the fixed probe event 
-    fpEvent.updateAverage(fieldAvg_Hz,fieldAvg_ppm)  
-    fpEvent.updateSigma(fieldSig_Hz,fieldSig_ppm)  
+    isUpdated,fpList = fileMgr.readFPData()
+    if(isUpdated==True): 
+        fieldAvg_Hz  = float(fpList[0])   
+        fieldSig_Hz  = float(fpList[1])   
+        fieldAvg_ppm = float(fpList[2])  
+        fieldSig_ppm = float(fpList[3])  
+        # update the fixed probe event if the file was updated  
+        fpEvent.updateAverage(fieldAvg_Hz,fieldAvg_ppm)  
+        fpEvent.updateSigma(fieldSig_Hz,fieldSig_ppm)  
     if global_var.IS_DEBUG==True: print("[getParameters]: Parameters read from file")
 
 def checkRunTime(runMgr):

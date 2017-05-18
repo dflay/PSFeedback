@@ -28,7 +28,15 @@ if rc==1:
 # get device ID 
 dev_id = yoko.get_device_id()
 yoko.Print() 
+# get the output state
+output_state = yoko.get_output_state() 
+print("output state = {0}".format(output_state))
 # get the mode  
+mode = yoko.get_mode() 
+print("mode = {0}".format(mode)) 
+# set to current mode 
+print("setting to current mode...")
+rc   = yoko.set_to_current_mode() 
 mode = yoko.get_mode() 
 print("mode = {0}".format(mode)) 
 # get the current/voltage level 

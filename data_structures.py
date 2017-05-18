@@ -122,22 +122,25 @@ class FileManager:
         self.fileEXT = "dat"
 
     def readFPData(self):
-        theDir  = './input'
-        inpath = '%s/fixed-probe-data.%s' %(theDir,self.fileEXT)
-        myList  = [] 
-        if (os.path.isdir(theDir)==True ):
-            if os.path.isfile(inpath): 
-                with open(inpath,'rb') as f:
-                    reader = csv.reader(f)
-                    for row in reader:
-                        myList = row 
-                    f.close()
-            else:  
-                print( "[FileManager]: File %s does not exist.  Returning zeroes." %(inpath) )
-                for i in range(0,4): myList.append(0.) 
-        else:
-            print("[FileManager]: Cannot access the directory %s. " %(theDir) )
-        return myList 
+        isUpdated = False
+        theDir    = './input'
+        inpath    = '%s/fixed-probe-data.%s' %(theDir,self.fileEXT)
+        lockfile  = '%s/fixed-probe-data.lock' %(theDir)
+        myList    = [0,0,0,0] 
+        if not os.path.isfile(lockfile):
+            if (os.path.isdir(theDir)==True ):
+                if os.path.isfile(inpath): 
+                    isUpdated = True  
+                    with open(inpath,'rb') as f:
+                        reader = csv.reader(f)
+                        for row in reader:
+                            myList = row 
+                        f.close()
+                else:  
+                    print( "[FileManager]: File %s does not exist.  Returning zeroes." %(inpath) )
+            else:
+                print("[FileManager]: Cannot access the directory %s. " %(theDir) )
+        return isUpdated,myList 
 
     def readParameters(self):
         theDir  = './input'
