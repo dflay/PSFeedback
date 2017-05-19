@@ -128,9 +128,9 @@ def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko,fpEvent):
     x = now_timestamp()
     if statusMgr.manualMode==1:
        y = statusMgr.currentSetPoint
-       y = y*global_var.CONV_Hz_TO_AMPS/1E-3 # need to convert to mA  
+       y = y*global_var.CONV_Hz_TO_AMPS  
     else:
-       y = getData(pidLoop,statusMgr,fpEvent)/1E-3    # comes out in Amps, convert to mA 
+       y = getData(pidLoop,statusMgr,fpEvent)    # comes out in Amps 
     # check the level 
     if y>global_var.LOWER_LIMIT and y<global_var.UPPER_LIMIT:
        # looks good, do nothing 
@@ -141,11 +141,11 @@ def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko,fpEvent):
     # now program the yokogawa 
     if statusMgr.isSimMode==False:
         if global_var.PREV_LVL!=y:               # check to see if the yokogawa level changed 
-            yoko.set_level(y)                    # FIXME: relatively certain that we set the current in mA  
+            yoko.set_level(y)                    # set the current in Amps  
         # wait a bit 
         time.sleep(global_var.READOUT_DELAY)
         my_lvl   = float( yoko.get_level() )
-        lvl      = my_lvl/1E-3                    # the readout is in Amps; convert to mA   
+        lvl      = my_lvl                        # the readout is in Amps 
     else:
         # test mode; use the random data  
         time.sleep(global_var.READOUT_DELAY)
@@ -153,7 +153,7 @@ def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko,fpEvent):
     # save the data to the event object
     yoko_event.ID             = global_var.EVENT_NUMBER 
     yoko_event.timestamp      = x
-    yoko_event.current        = lvl
+    yoko_event.current        = lvl/global_var.MILLIAMPS    # save events in mA 
     yoko_event.setpoint       = statusMgr.currentSetPoint
     yoko_event.is_manual      = statusMgr.manualMode
     if statusMgr.isSimMode==False:

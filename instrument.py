@@ -73,6 +73,11 @@ class yokogawa(object):
         response = self.ask(cmd) 
         return response 
     #_____________________________________________________________________________
+    def clear_errors(self): 
+        cmd = "*CLS"
+        rc = self.write(cmd) 
+        return rc 
+    #_____________________________________________________________________________
     def get_level(self): 
         cmd = ":SOUR:LEV?"
         response = self.ask(cmd) 

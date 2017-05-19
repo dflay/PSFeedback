@@ -29,7 +29,7 @@ I          = float(parList[6])
 D          = float(parList[7])
 
 fpList    = [] 
-fpList    = fileMgr.readFPData()
+isUpdated,fpList = fileMgr.readFPData()
 fpAvg     = float(fpList[0]) 
 fpAvgPPM  = float(fpList[1]) 
 fpSig     = float(fpList[2]) 
@@ -101,7 +101,7 @@ if args.setpoint is not None:
 
 # was the setpoint applied in mA?
 if args.setpoint_mA is not None:  
-    setpoint_A = float(args.setpoint_mA)*1E-3 
+    setpoint_A = float(args.setpoint_mA)*global_var.MILLIAMPS 
     setpoint   = setpoint_A/global_var.CONV_Hz_TO_AMPS
 
 # use only one flag, not both (that won't make sense!) 
@@ -126,11 +126,14 @@ if writeFPFile==True:
     fileMgr.writeFPData(fpAvg,fpAvgPPM,fpSig,fpSigPPM)
 
 # if the start flag was used, start the program 
-task = "python psfb.py"
-cmd  = "screen -S ps-fdbk -d -m %s" %(task) 
+task     = "python psfb.py"
+cmd      = "screen -S ps-fdbk -d -m %s" %(task) 
+find_pid = "ps aux | grep psfb.py" 
 if startDAQ: 
+   print("Trying: %s" %(cmd))
    os.system(cmd)
    print("[PSFeedback]: The program has been started with the values: ")     
    print("              P = %.3f, I = %.3f, D = %.3f, setpoint = %.3f, simMode = %d, mode = %d, daqStatus = %d, killStatus = %d" \
           %(P,I,D,setpoint,simMode,mode,daqStatus,killStatus) )
+   os.system(find_pid) 
 

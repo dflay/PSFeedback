@@ -36,9 +36,12 @@ mode = yoko.get_mode()
 print("mode = {0}".format(mode)) 
 # set to current mode 
 print("setting to current mode...")
+rc   = yoko.clear_errors() 
 rc   = yoko.set_to_current_mode() 
 mode = yoko.get_mode() 
 print("mode = {0}".format(mode)) 
+rc = yoko.set_range_max() 
+rc = yoko.set_level(0.00) 
 # get the current/voltage level 
 current = yoko.get_level() 
 print("level = {0:.4f} mA".format( float(current)/1E-3 )) 

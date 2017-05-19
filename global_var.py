@@ -11,13 +11,13 @@ UNIX_EPOCH              = UNIX_EPOCH_naive
 TS_MULT_us              = 1E6
 
 # global variables 
-LOWER_LIMIT             = -200                      # in mA 
-UPPER_LIMIT             =  200                      # in mA 
-PREV_LVL                = 0                         # in mA 
+MILLIAMPS               = 1E-3                      # 1 mA = 10^-3 A  
+LOWER_LIMIT             = -200*MILLIAMPS            # in A 
+UPPER_LIMIT             =  200*MILLIAMPS            # in A 
+PREV_LVL                = 0                         # in A 
 PREV_TIME               = 0                         # in seconds  
 READOUT_DELAY           = 0.5*SECONDS               # in seconds 
 RUN_TIME                = 2*HOURS                   # in seconds  
-CONV_mA_TO_AMPS         = 1E-3                      # 1 mA = 10^-3 A  
 CONV_Hz_TO_AMPS         = (1./32.)*(5200./61.79E+6) # A/Hz 
 EVENT_NUMBER            = 0
 DATA_FN                 = "ps-feedback"             # output file name
