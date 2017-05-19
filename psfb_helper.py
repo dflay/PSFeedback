@@ -128,12 +128,13 @@ if writeFPFile==True:
 # if the start flag was used, start the program 
 task     = "python psfb.py"
 cmd      = "screen -S ps-fdbk -d -m %s" %(task) 
-find_pid = "ps aux | grep psfb.py" 
+list_screens = "screen -ls" 
 if startDAQ: 
-   print("Trying: %s" %(cmd))
+   print("[PSFeedback]: Trying: %s" %(cmd))
    os.system(cmd)
    print("[PSFeedback]: The program has been started with the values: ")     
    print("              P = %.3f, I = %.3f, D = %.3f, setpoint = %.3f, simMode = %d, mode = %d, daqStatus = %d, killStatus = %d" \
           %(P,I,D,setpoint,simMode,mode,daqStatus,killStatus) )
-   os.system(find_pid) 
+   print("[PSFeedback]: Active screens: ")
+   os.system(list_screens) 
 
