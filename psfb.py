@@ -144,8 +144,8 @@ def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko,fpEvent):
             yoko.set_level(y)                    # set the current in Amps  
         # wait a bit 
         time.sleep(global_var.READOUT_DELAY)
-        my_lvl   = float( yoko.get_level() )
-        lvl      = my_lvl                        # the readout is in Amps 
+        the_lvl  = yoko.get_level()
+        lvl      = float(the_lvl)                        # the readout is in Amps 
     else:
         # test mode; use the random data  
         time.sleep(global_var.READOUT_DELAY)
@@ -157,7 +157,8 @@ def readEvent(statusMgr,runMgr,fileMgr,pidLoop,yoko,fpEvent):
     yoko_event.setpoint       = statusMgr.currentSetPoint
     yoko_event.is_manual      = statusMgr.manualMode
     if statusMgr.isSimMode==False:
-        yoko_event.output_enabled = int( yoko.get_output_state() )
+        output_state              = yoko.get_output_state()
+        yoko_event.output_enabled = int(output_state)  
     else:
         yoko_event.output_enabled = 0
     yoko_event.p_fdbk = pidLoop.Kp

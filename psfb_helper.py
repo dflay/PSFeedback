@@ -4,6 +4,7 @@
 
 import os
 import argparse
+import setproctitle 
 import global_var 
 from data_structures import FileManager 
 
@@ -126,8 +127,12 @@ if writeFPFile==True:
     fileMgr.writeFPData(fpAvg,fpAvgPPM,fpSig,fpSigPPM)
 
 # if the start flag was used, start the program 
-task     = "python psfb.py"
-cmd      = "screen -S ps-fdbk -d -m %s" %(task) 
+progName     = "psfb"
+setproctitle.setproctitle(progName) 
+screen_log   = "./log/screen-output.txt"
+task         = "python %s.py" %(progName) 
+# cmd          = "screen -S ps-fdbk -d -m %s" %(task) 
+cmd          = "%s" %(task) 
 list_screens = "screen -ls" 
 if startDAQ: 
    print("[PSFeedback]: Trying: %s" %(cmd))
@@ -135,6 +140,6 @@ if startDAQ:
    print("[PSFeedback]: The program has been started with the values: ")     
    print("              P = %.3f, I = %.3f, D = %.3f, setpoint = %.3f, simMode = %d, mode = %d, daqStatus = %d, killStatus = %d" \
           %(P,I,D,setpoint,simMode,mode,daqStatus,killStatus) )
-   print("[PSFeedback]: Active screens: ")
-   os.system(list_screens) 
+   # print("[PSFeedback]: Active screens: ")
+   # os.system(list_screens) 
 
