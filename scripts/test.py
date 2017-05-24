@@ -28,6 +28,13 @@ if rc==1:
 # get device ID 
 dev_id = yoko.get_device_id()
 yoko.Print() 
+errID,err_msg = yoko.run_error_check()
+print("error ID: {0}, message: {1}".format(errID,err_msg))
+# clear errors 
+if(errID!=0): 
+    yoko.clear_errors()
+    errID,err_msg = yoko.run_error_check()
+    print("error ID: {0}, message: {1}".format(errID,err_msg))
 # get the output state
 output_state = yoko.get_output_state() 
 print("output state = {0}".format(output_state))
@@ -36,12 +43,10 @@ mode = yoko.get_mode()
 print("mode = {0}".format(mode)) 
 # set to current mode 
 print("setting to current mode...")
-rc   = yoko.clear_errors() 
 rc   = yoko.set_to_current_mode() 
 mode = yoko.get_mode() 
 print("mode = {0}".format(mode)) 
 rc = yoko.set_range_max() 
-rc = yoko.set_level(0.00) 
 # get the current/voltage level 
 current = yoko.get_level() 
 print("level = {0:.4f} mA".format( float(current)/1E-3 )) 

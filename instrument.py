@@ -96,7 +96,10 @@ class yokogawa(object):
     def run_error_check(self):
         cmd = ":SYSTem:ERRor?" 
         response = self.ask(cmd) 
-        return response 
+        myStr = response.split(",")
+        errID = int(myStr[0]) 
+        msg   = myStr[1]
+        return errID,msg
     #_____________________________________________________________________________
     def get_output_state(self): 
         cmd = "OUTP?" 

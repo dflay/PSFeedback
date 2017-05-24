@@ -1,6 +1,6 @@
 #! /usr/bin/python 
  
-from PyQt5.QtCore import QTime, QTimer, Qt
+from PyQt4.QtCore import QTime, QTimer, Qt
 from pyqtgraph.Qt import QtGui, QtCore
 from pyqtgraph.dockarea import *
 # import pyqtgraph as pg
